@@ -16,6 +16,12 @@ describe('faucet api', async () => {
 
     container = await builtContainer
       .withExposedPorts(3000)
+      .withEnvironment({
+        PORT: '3000',
+        WALLET_FILE: path.resolve(__dirname, '../../wallet.json'),
+        LOG_LEVEL: 'debug',
+        LOG_FORMAT: 'json',
+      })
       .start();
 
     console.log(`API is running at ${container.getMappedPort(3000)}`);
