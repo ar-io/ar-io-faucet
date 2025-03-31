@@ -6,11 +6,12 @@ import {
   loggerMiddleware,
 } from './middleware/index.js';
 import router from './router.js';
-
+import { rateLimitMiddleware } from './middleware/ratelimit.js';
 const app = new Koa();
 
 // attach middlewares
 app.use(loggerMiddleware);
+app.use(rateLimitMiddleware);
 app.use(cors());
 app.use(bodyParser());
 app.use(router.routes());

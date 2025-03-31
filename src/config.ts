@@ -18,3 +18,7 @@ export const WALLET: JWKInterface = JSON.parse(fs.readFileSync(WALLET_FILE, 'utf
 // logging config
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 export const LOG_FORMAT = process.env.LOG_FORMAT || 'json';
+
+// rate limiting config
+export const RATE_LIMIT_WINDOW_MS = +(process.env.RATE_LIMIT_WINDOW_MS || 60 * 1000); // 1 minute
+export const RATE_LIMIT_MAX = +(process.env.RATE_LIMIT_MAX || 10); // 10 requests per 1 minute
