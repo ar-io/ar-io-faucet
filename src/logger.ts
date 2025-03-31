@@ -18,20 +18,20 @@ import winston, { format, transports } from 'winston';
 import * as config from './config.js';
 
 const logger = winston.createLogger({
-  level: config.LOG_LEVEL,
-  format: format.combine(
-    format((info) => {
-      // Only log stack traces when the log level is error
-      if (info.stack && info.level !== 'error') {
-        delete info.stack;
-      }
-      return info;
-    })(),
-    format.errors(),
-    format.timestamp(),
-    config.LOG_FORMAT === 'json' ? format.json() : format.simple(),
-  ),
-  transports: new transports.Console(),
+	level: config.LOG_LEVEL,
+	format: format.combine(
+		format((info) => {
+			// Only log stack traces when the log level is error
+			if (info.stack && info.level !== 'error') {
+				info.stack = undefined;
+			}
+			return info;
+		})(),
+		format.errors(),
+		format.timestamp(),
+		config.LOG_FORMAT === 'json' ? format.json() : format.simple(),
+	),
+	transports: new transports.Console(),
 });
 
 export default logger;
