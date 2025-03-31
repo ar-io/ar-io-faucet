@@ -3,8 +3,8 @@ import {
 	ARIO_TESTNET_PROCESS_ID,
 } from '@ar.io/sdk/node';
 import { Arweave, ArweaveSigner } from '@dha-team/arbundles';
-import { WALLET } from './config.js';
 import { InMemoryTokenCache } from './cache/token-cache.js';
+import { WALLET } from './config.js';
 import * as config from './config.js';
 import { AoTokenFaucet } from './faucet/faucet.js';
 

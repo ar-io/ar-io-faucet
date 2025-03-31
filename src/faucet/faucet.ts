@@ -1,16 +1,13 @@
-import type { TokenCache } from '../types.js';
 import type { JWKInterface } from '@dha-team/arbundles/node';
-import { arweave } from '../system.js';
 import { message, result } from '@permaweb/aoconnect';
 import * as config from '../config.js';
+import { arweave } from '../system.js';
+import type { TokenCache } from '../types.js';
 
 export interface TokenFaucet {
 	request(recipient: string): Promise<string>;
 	verify(token: string): Promise<boolean>;
-	mint({
-		token,
-		qty,
-	}: { token: string; qty?: number }): Promise<{
+	mint({ token, qty }: { token: string; qty?: number }): Promise<{
 		id: string;
 		status: string;
 		error?: string;

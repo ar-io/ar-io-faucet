@@ -1,5 +1,5 @@
-import type { InFlightTokenPayload, TokenCache } from '../types.js';
 import NodeCache from 'node-cache';
+import type { InFlightTokenPayload, TokenCache } from '../types.js';
 
 export class InMemoryTokenCache implements TokenCache {
 	private cache: NodeCache;

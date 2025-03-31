@@ -2,10 +2,10 @@ import cors from '@koa/cors';
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import * as config from './config.js';
+import logger from './logger.js';
 import { loggerMiddleware } from './middleware/index.js';
 import { rateLimitMiddleware } from './middleware/ratelimit.js';
 import router from './router.js';
-import logger from './logger.js';
 const app = new Koa();
 
 // attach middlewares
