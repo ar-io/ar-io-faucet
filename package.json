@@ -47,6 +47,7 @@
 		"lint": "biome check --unsafe",
 		"format:fix": "biome format --write",
 		"format": "biome format",
+		"test": "yarn lint && yarn format && yarn build && yarn test:e2e",
 		"test:e2e": "node --import ./register.mjs tests/e2e/**.test.ts"
 	}
 }
