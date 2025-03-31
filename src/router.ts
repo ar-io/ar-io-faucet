@@ -1,10 +1,5 @@
 import Router from 'koa-router';
-import {
-	generateToken,
-	transferToken,
-	verifyTokenAndExpiration,
-} from './lib/crypto.js';
-import * as config from './config.js';
+import { supportedProcesses } from './system.js';
 const router = new Router();
 
 // health check endpoint
@@ -13,7 +8,10 @@ router.get('/healthcheck', async (ctx) => {
 });
 
 router.post('/api/request', async (ctx) => {
-	const { recipient } = ctx.request.body as { recipient?: string };
+	const { recipient, processId } = ctx.request.body as {
+		recipient?: string;
+		processId?: string;
+	};
 
 	if (!recipient) {
 		ctx.status = 400;
@@ -21,13 +19,29 @@ router.post('/api/request', async (ctx) => {
 		return;
 	}
 
-	const token = await generateToken(recipient);
+	if (!processId) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process ID is required' };
+		return;
+	}
+
+	const faucet = supportedProcesses.get(processId);
+	if (!faucet) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process not supported.' };
+		return;
+	}
+
+	const token = await faucet.request(recipient);
 
 	ctx.body = { token };
 });
 
-router.post('/api/verify', async (ctx) => {
-	const { token } = ctx.request.body as { token?: string };
+router.get('/api/verify', async (ctx) => {
+	const { token, processId } = ctx.query as {
+		token?: string;
+		processId?: string;
+	};
 
 	if (!token) {
 		ctx.status = 400;
@@ -35,7 +49,13 @@ router.post('/api/verify', async (ctx) => {
 		return;
 	}
 
-	const { isValid } = await verifyTokenAndExpiration(token);
+	if (!processId) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process ID is required' };
+		return;
+	}
+
+	const isValid = await supportedProcesses.get(processId)?.verify(token);
 	if (!isValid) {
 		ctx.status = 400;
 		ctx.body = { error: 'Invalid token', isValid };
@@ -46,7 +66,11 @@ router.post('/api/verify', async (ctx) => {
 });
 
 router.post('/api/mint', async (ctx) => {
-	const { token } = ctx.request.body as { token?: string };
+	const { token, processId } = ctx.request.body as {
+		token?: string;
+		processId?: string;
+		qty?: number;
+	};
 
 	if (!token) {
 		ctx.status = 400;
@@ -54,17 +78,28 @@ router.post('/api/mint', async (ctx) => {
 		return;
 	}
 
-	try {
-		const txId = await transferToken({ token, qty: config.TRANSFER_QTY });
-		ctx.body = { id: txId, status: 'success' };
-	} catch (error: unknown) {
-		ctx.status = 503;
-		ctx.body = {
-			error: 'Failed to mint token',
-			message: (error as Error).message,
-			stack: (error as Error).stack,
-		};
+	if (!processId) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process ID is required' };
+		return;
 	}
+
+	const faucet = supportedProcesses.get(processId);
+	if (!faucet) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process not supported.' };
+		return;
+	}
+
+	const { id, status, error } = await faucet.mint({ token });
+
+	if (error) {
+		ctx.status = 503;
+		ctx.body = { error: 'Failed to mint token', message: error };
+		return;
+	}
+
+	ctx.body = { id, status, error };
 });
 
 export default router;

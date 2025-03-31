@@ -5,10 +5,15 @@ import type { JWKInterface } from '@dha-team/arbundles';
 export const PORT = process.env.PORT || 3000;
 
 // token config
-export const TOKEN_EXPIRATION_SECONDS = +(
-	process.env.TOKEN_EXPIRATION_SECONDS || 3600
+export const DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS = +(
+	process.env.DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS || 3600
 ); // 1 hour
-// TODO: constraints on the testnet token minting/token generation
+export const DEFAULT_FAUCET_TOKEN_CACHE_SIZE = +(
+	process.env.DEFAULT_FAUCET_TOKEN_CACHE_SIZE || 100
+);
+export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
+	process.env.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY || 10_000_000_000
+);
 
 // wallet config
 export const WALLET_FILE = process.env.WALLET_FILE;
@@ -28,8 +33,3 @@ export const RATE_LIMIT_WINDOW_MS = +(
 	process.env.RATE_LIMIT_WINDOW_MS || 60 * 1000
 ); // 1 minute
 export const RATE_LIMIT_MAX = +(process.env.RATE_LIMIT_MAX || 10); // 10 requests per 1 minute
-
-// token config
-export const TOKEN_ID =
-	process.env.TOKEN_ID || 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
-export const TRANSFER_QTY = +(process.env.TRANSFER_QTY || 10_000_000_000); // 10 billion

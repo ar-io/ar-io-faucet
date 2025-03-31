@@ -23,4 +23,4 @@ EXPOSE 3000
 # Add labels
 LABEL org.opencontainers.image.title="ar.io - Testnet Faucet Service"
 
-ENTRYPOINT [ "node", "src/app.js" ]
+CMD [ "dist/app.js" ]
