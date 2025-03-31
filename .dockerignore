@@ -1,0 +1,9 @@
+# node
+node_modules/
+
+# other
+.vscode/
+.github/
+
+# tests
+tests/

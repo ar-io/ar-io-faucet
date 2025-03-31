@@ -3,15 +3,15 @@ import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import axios from 'axios';
-import {
-	GenericContainer,
-	type StartedTestContainer,
-	Wait,
-} from 'testcontainers';
+import { GenericContainer, type StartedTestContainer, Wait } from 'testcontainers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const context = path.resolve(__dirname, '../../');
+const wallet = path.resolve(__dirname, '../../wallets/wallet.json');
+
+console.log('Context', context);
+console.log('Wallet', wallet);
 describe('faucet api', async () => {
 	let container: StartedTestContainer;
 
@@ -23,13 +23,14 @@ describe('faucet api', async () => {
 			.withExposedPorts(3000)
 			.withEnvironment({
 				PORT: '3000',
-				WALLET_FILE: path.resolve(__dirname, '../../wallet.json'),
+				WALLET_FILE: wallet,
 				LOG_LEVEL: 'debug',
 				LOG_FORMAT: 'json',
 			})
+			.withWaitStrategy(
+				Wait.forHttp('/healthcheck', 3000).forStatusCode(200),
+			)
 			.start();
-
-		console.log(`API is running at ${container.getMappedPort(3000)}`);
 	});
 
 	after(async () => {

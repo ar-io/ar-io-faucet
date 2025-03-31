@@ -18,13 +18,13 @@ app.use(router.routes());
 // on SIGINT, SIGTERM, or SIGQUIT, close the server
 process.on('SIGINT', () => {
 	logger.info('Server closed');
-	app.context.server.close();
+	app.context.server?.close();
 });
 
 // on SIGTERM, close the server
 process.on('SIGTERM', () => {
 	logger.info('Server closed');
-	app.context?.server?.close();
+	app.context.server?.close();
 });
 
 // on uncaughtException, close the server
