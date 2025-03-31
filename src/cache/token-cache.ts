@@ -1,7 +1,7 @@
 import NodeCache from 'node-cache';
 import type { InFlightTokenPayload, TokenCache } from '../types.js';
 
-export class InMemoryTokenCache implements TokenCache {
+export class NodeTokenCache implements TokenCache {
 	private cache: NodeCache;
 	constructor({
 		maxSize,

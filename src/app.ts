@@ -6,6 +6,7 @@ import logger from './logger.js';
 import { loggerMiddleware } from './middleware/index.js';
 import { rateLimitMiddleware } from './middleware/ratelimit.js';
 import router from './router.js';
+
 const app = new Koa();
 
 // attach middlewares
@@ -18,13 +19,13 @@ app.use(router.routes());
 // on SIGINT, SIGTERM, or SIGQUIT, close the server
 process.on('SIGINT', () => {
 	logger.info('Server closed');
-	app.context.server?.close();
+	process.exit(0);
 });
 
 // on SIGTERM, close the server
 process.on('SIGTERM', () => {
 	logger.info('Server closed');
-	app.context.server?.close();
+	process.exit(0);
 });
 
 // on uncaughtException, close the server
@@ -33,8 +34,8 @@ process.on('uncaughtException', (error) => {
 });
 
 // Start server
-app.listen(config.PORT, () => {
-	logger.info(`Server running on port ${config.PORT}`);
+app.listen(config.PORT, '0.0.0.0', () => {
+	logger.info(`Listening on port ${config.PORT}`);
 });
 
 export default app;

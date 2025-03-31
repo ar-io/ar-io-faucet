@@ -1,5 +1,5 @@
 import rateLimit from 'koa-ratelimit';
-import { RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS } from '../config.js';
+import * as config from '../config.js';
 
 // rate limit middleware
 export const rateLimitMiddleware = rateLimit({
@@ -7,7 +7,7 @@ export const rateLimitMiddleware = rateLimit({
 	db: new Map(),
 	errorMessage: 'Too many requests, please try again later.',
 	id: (ctx) => ctx.ip,
-	duration: RATE_LIMIT_WINDOW_MS,
-	max: RATE_LIMIT_MAX,
+	duration: config.RATE_LIMIT_WINDOW_MS,
+	max: config.RATE_LIMIT_THRESHOLD,
 	disableHeader: false,
 });

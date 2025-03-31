@@ -11,7 +11,7 @@
 
 		/* Additional Checks */
 		"pretty": true,
-		"sourceMap": true,
+		"sourceMap": false,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitAny": true,
 		"noImplicitReturns": true,

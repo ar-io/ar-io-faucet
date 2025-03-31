@@ -19,7 +19,7 @@ The service will return a token that can be used to mint the tokens on the AR.IO
 Users can verify a token by sending a GET request to the `/api/verify` endpoint with the token in the query parameters.
 
 ```bash
-curl -X GET http://localhost:3000/api/verify?token=token&processId=processId
+curl -X GET http://localhost:3000/api/verify?token=<token>&processId=<processId>
 ```
 
 The service will return whether the token is valid.

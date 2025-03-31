@@ -38,8 +38,8 @@
 		"typescript": "^5.8.2"
 	},
 	"scripts": {
-		"start": "nodemon",
-		"dev": "nodemon --exec node --import ./register.mjs -r dotenv/config src/app.ts",
+		"start": "node dist/app.js",
+		"start:watch": "nodemon",
 		"build": "yarn clean && yarn && npx tsc --project ./tsconfig.json",
 		"clean": "rm -rf dist",
 		"lint:fix": "biome check --write --unsafe",
@@ -47,6 +47,6 @@
 		"format:fix": "biome format --write",
 		"format:check": "biome format",
 		"test": "yarn test:e2e",
-		"test:e2e": "node --import ./register.mjs tests/e2e/**.test.ts"
+		"test:e2e": "node --import ./register.mjs --test tests/**/**.test.ts"
 	}
 }
