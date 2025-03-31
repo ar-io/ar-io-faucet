@@ -1,10 +1,7 @@
 import assert from 'node:assert';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import {
-	GenericContainer,
-	type StartedTestContainer,
-} from 'testcontainers';
+import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 
 const context = process.cwd();
 
@@ -15,9 +12,7 @@ describe('faucet api', async () => {
 		const builtContainer =
 			await GenericContainer.fromDockerfile(context).build();
 
-		container = await builtContainer
-			.withExposedPorts(3000)
-			.start();
+		container = await builtContainer.withExposedPorts(3000).start();
 	});
 
 	after(async () => {

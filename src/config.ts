@@ -18,7 +18,9 @@ export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
 // wallet config
 export const WALLET_FILE = process.env.WALLET_FILE;
 export const WALLET: JWKInterface = JSON.parse(
-	WALLET_FILE ? fs.readFileSync(WALLET_FILE, 'utf8') : process.env.WALLET || '{}',
+	WALLET_FILE
+		? fs.readFileSync(WALLET_FILE, 'utf8')
+		: process.env.WALLET || '{}',
 );
 
 if (!WALLET) {
