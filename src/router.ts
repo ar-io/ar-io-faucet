@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 import Router from 'koa-router';
+import * as config from './config.js';
 import { supportedProcesses } from './system.js';
 
 const router = new Router();
@@ -27,11 +28,41 @@ router.get('/healthcheck', async (ctx) => {
 
 // request an authorization token
 router.post('/api/request', async (ctx) => {
-	const { recipient, processId, qty } = ctx.request.body as {
+	const { recipient, processId, qty, captchaResponse } = ctx.request.body as {
 		recipient?: string;
 		processId?: string;
 		qty?: number;
+		captchaResponse?: string;
 	};
+
+	if (!config.DISABLE_CAPTCHA_VERIFICATION) {
+		if (!captchaResponse) {
+			ctx.status = 400;
+			ctx.body = { error: 'Captcha response is required' };
+			return;
+		}
+
+		const queryParams = new URLSearchParams({
+			secret: config.CAPTCHA_SECRET_KEY as string,
+			response: captchaResponse,
+			remoteip: ctx.ip,
+		});
+
+		const captchaResult = await fetch(
+			`${config.CAPTCHA_SITE_VERIFY_URL}?${queryParams.toString()}`,
+			{
+				method: 'POST',
+			},
+		);
+
+		const captchaResultJson = await captchaResult.json();
+
+		if (!captchaResultJson.success) {
+			ctx.status = 400;
+			ctx.body = { error: 'Captcha verification failed' };
+			return;
+		}
+	}
 
 	if (!recipient) {
 		ctx.status = 400;
@@ -51,8 +82,6 @@ router.post('/api/request', async (ctx) => {
 		ctx.body = { error: 'Process not supported.' };
 		return;
 	}
-
-	// TODO: add captcha validation
 	const token = await faucet.request({
 		recipient,
 		qty: qty ? +qty : undefined,

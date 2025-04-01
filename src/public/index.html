@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR.IO Testnet Faucet</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -38,17 +39,7 @@
 
                 <div class="captcha-container">
                     <label for="captcha" class="block text-sm font-medium text-gray-700">Captcha</label>
-                    <div class="flex items-center space-x-2 mt-1">
-                        <div id="captchaDisplay" class="bg-gray-200 px-4 py-2 rounded-md font-mono text-lg tracking-wider"></div>
-                        <button type="button" id="refreshCaptcha" class="p-2 bg-gray-200 rounded-md hover:bg-gray-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                        </button>
-                    </div>
-                    <input type="text" id="captchaInput" name="captchaInput" required
-                        class="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter the captcha text">
+                    <div class="h-captcha p-4" data-sitekey="8050e750-2c24-45e8-86fa-0d56d4384dc8" data-theme="light"></div>
                 </div>
 
                 <div>
@@ -82,34 +73,14 @@
     </div>
 
     <script>
-        // Generate a simple captcha
-        let captchaText = '';
-        
-        function generateCaptcha() {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-            captchaText = '';
-            for (let i = 0; i < 6; i++) {
-                captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            document.getElementById('captchaDisplay').textContent = captchaText;
-        }
-        
-        // Initialize captcha on page load
-        document.addEventListener('DOMContentLoaded', generateCaptcha);
-        
-        // Refresh captcha when button is clicked
-        document.getElementById('refreshCaptcha').addEventListener('click', generateCaptcha);
-        
         // Handle form submission
         document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Validate captcha
-            const captchaInput = document.getElementById('captchaInput').value;
-            if (captchaInput !== captchaText) {
-                showError('Incorrect captcha. Please try again.');
-                generateCaptcha();
-                document.getElementById('captchaInput').value = '';
+            // Get hCaptcha response
+            const hcaptchaResponse = hcaptcha.getResponse();
+            if (!hcaptchaResponse) {
+                showError('Please complete the captcha');
                 return;
             }
             
@@ -123,7 +94,12 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ recipient, processId, qty: parseInt(qty) })
+                    body: JSON.stringify({ 
+                        recipient, 
+                        processId, 
+                        qty: parseInt(qty),
+                        captchaResponse: hcaptchaResponse 
+                    })
                 });
 
                 if (!response.ok) {
@@ -149,8 +125,13 @@
                 }
 
                 showResult(dripData.id);
+                
+                // Reset hCaptcha for next submission
+                hcaptcha.reset();
             } catch (error) {
                 showError(error.message);
+                // Reset hCaptcha on error
+                hcaptcha.reset();
             }
         });
         
