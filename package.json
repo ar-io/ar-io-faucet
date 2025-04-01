@@ -22,7 +22,8 @@
 		"koa-router": "^13.0.1",
 		"koa-static": "^5.0.0",
 		"node-cache": "^5.1.2",
-		"winston": "^3.17.0"
+		"winston": "^3.17.0",
+		"zod": "^3.24.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",

@@ -15,6 +15,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+import { z } from 'zod';
+
 export interface TokenPayload {
 	address: string;
 	recipient: string;
@@ -34,3 +36,22 @@ export interface TokenCache {
 	clear(): Promise<void>;
 	size(): Promise<number>;
 }
+
+export const TokenRequestSchema = z.object({
+	recipient: z
+		.string()
+		.min(26, 'Wallet address must be at least 26 characters')
+		.max(64, 'Wallet address must be at most 64 characters')
+		.regex(/^\S*$/, 'Wallet address must not contain spaces'),
+	processId: z.string().min(43, 'Process ID is required'),
+	qty: z
+		.number()
+		.int('Quantity must be an integer')
+		.min(1, 'Quantity must be at least 1')
+		.max(10000, 'Quantity must be at most 10,000')
+		.optional()
+		.default(10000),
+	captchaResponse: z.string().min(1, 'Captcha response is required').optional(),
+});
+
+export type TokenRequest = z.infer<typeof TokenRequestSchema>;

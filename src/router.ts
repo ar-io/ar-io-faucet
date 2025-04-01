@@ -18,6 +18,7 @@
 import Router from 'koa-router';
 import * as config from './config.js';
 import { supportedProcesses } from './system.js';
+import { TokenRequestSchema } from './types.js';
 
 const router = new Router();
 
@@ -28,12 +29,15 @@ router.get('/healthcheck', async (ctx) => {
 
 // request an authorization token
 router.post('/api/request', async (ctx) => {
-	const { recipient, processId, qty, captchaResponse } = ctx.request.body as {
-		recipient?: string;
-		processId?: string;
-		qty?: number;
-		captchaResponse?: string;
-	};
+	const tokenRequest = TokenRequestSchema.safeParse(ctx.request.body);
+
+	if (!tokenRequest.success) {
+		ctx.status = 400;
+		ctx.body = { error: tokenRequest.error.message };
+		return;
+	}
+
+	const { recipient, processId, qty, captchaResponse } = tokenRequest.data;
 
 	if (!config.DISABLE_CAPTCHA_VERIFICATION) {
 		if (!captchaResponse) {
@@ -62,18 +66,6 @@ router.post('/api/request', async (ctx) => {
 			ctx.body = { error: 'Captcha verification failed' };
 			return;
 		}
-	}
-
-	if (!recipient) {
-		ctx.status = 400;
-		ctx.body = { error: 'Recipient is required' };
-		return;
-	}
-
-	if (!processId) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process ID is required' };
-		return;
 	}
 
 	const faucet = supportedProcesses.get(processId);
