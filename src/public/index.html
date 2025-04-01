@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR.IO Testnet Token Minting Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-blue-600">AR.IO Testnet Faucet</h1>
+            <p class="text-center text-gray-600 mt-2">Request tokens for the AR.IO Testnet</p>
+        </header>
+
+        <main class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+            <form id="tokenRequestForm" class="space-y-4">
+                <div>
+                    <label for="recipient" class="block text-sm font-medium text-gray-700">Wallet Address</label>
+                    <input type="text" id="recipient" name="recipient" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label for="processId" class="block text-sm font-medium text-gray-700">Process ID</label>
+                    <select id="processId" name="processId" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA">AR.IO Testnet</option>
+                        <option value="GaQrvEMKBpkjofgnBi_B3IgIDmY_XYelVLB6GcRGrHc">AR.IO Devnet</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="qty" class="block text-sm font-medium text-gray-700">Quantity (max 10,000)</label>
+                    <input type="number" id="qty" name="qty" min="1" max="10000" value="10000" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div class="captcha-container">
+                    <label for="captcha" class="block text-sm font-medium text-gray-700">Captcha</label>
+                    <div class="flex items-center space-x-2 mt-1">
+                        <div id="captchaDisplay" class="bg-gray-200 px-4 py-2 rounded-md font-mono text-lg tracking-wider"></div>
+                        <button type="button" id="refreshCaptcha" class="p-2 bg-gray-200 rounded-md hover:bg-gray-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                    <input type="text" id="captchaInput" name="captchaInput" required
+                        class="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter the captcha text">
+                </div>
+
+                <div>
+                    <button type="submit" 
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Request Tokens
+                    </button>
+                </div>
+            </form>
+
+            <div id="resultContainer" class="mt-6 hidden">
+                <div class="p-4 bg-green-100 rounded-md">
+                    <h3 class="text-lg font-medium text-green-800">Token Request Successful</h3>
+                    <div class="mt-2">
+                        <p class="text-sm text-green-700">Transfer ID:</p>
+                        <p id="tokenResult" class="mt-1 text-xs font-mono bg-gray-100 p-2 rounded break-all"></p>
+                    </div>
+                    <div class="mt-4">
+                        <button id="copyToken" class="text-sm text-blue-600 hover:text-blue-800">Copy to clipboard</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="errorContainer" class="mt-6 hidden">
+                <div class="p-4 bg-red-100 rounded-md">
+                    <h3 class="text-lg font-medium text-red-800">Error</h3>
+                    <p id="errorMessage" class="mt-2 text-sm text-red-700"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Generate a simple captcha
+        let captchaText = '';
+        
+        function generateCaptcha() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+            captchaText = '';
+            for (let i = 0; i < 6; i++) {
+                captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('captchaDisplay').textContent = captchaText;
+        }
+        
+        // Initialize captcha on page load
+        document.addEventListener('DOMContentLoaded', generateCaptcha);
+        
+        // Refresh captcha when button is clicked
+        document.getElementById('refreshCaptcha').addEventListener('click', generateCaptcha);
+        
+        // Handle form submission
+        document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Validate captcha
+            const captchaInput = document.getElementById('captchaInput').value;
+            if (captchaInput !== captchaText) {
+                showError('Incorrect captcha. Please try again.');
+                generateCaptcha();
+                document.getElementById('captchaInput').value = '';
+                return;
+            }
+            
+            const recipient = document.getElementById('recipient').value;
+            const processId = document.getElementById('processId').value;
+            const qty = document.getElementById('qty').value;
+            
+            try {
+                const response = await fetch('/api/request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ recipient, processId, qty: parseInt(qty) })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to get an authorization token. Please try again.');
+                }
+
+                // now drip the tokens to the recipient
+                const dripResponse = await fetch('/api/drip', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${data.token}`
+                    },
+                    body: JSON.stringify({ recipient, processId, qty: parseInt(qty) })
+                });
+
+                const dripData = await dripResponse.json();
+
+                if (!dripResponse.ok) {
+                    throw new Error(dripData.error || 'Failed to drip tokens. Please try again later.');
+                }
+
+                showResult(dripData.id);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+        
+        function showResult(id) {
+            document.getElementById('tokenResult').textContent = id;
+            document.getElementById('resultContainer').classList.remove('hidden');
+            document.getElementById('errorContainer').classList.add('hidden');
+        }
+        
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorContainer').classList.remove('hidden');
+            document.getElementById('resultContainer').classList.add('hidden');
+        }
+        
+        // Copy token to clipboard
+        document.getElementById('copyToken').addEventListener('click', function() {
+            const tokenText = document.getElementById('tokenResult').textContent;
+            navigator.clipboard.writeText(tokenText).then(function() {
+                this.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.textContent = 'Copy to clipboard';
+                }, 2000);
+            }.bind(this));
+        });
+    </script>
+</body>
+</html>

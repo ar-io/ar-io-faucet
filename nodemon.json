@@ -1,5 +1,5 @@
 {
 	"watch": ["src", "docs", ".env"],
-	"ext": "ts,yaml,json",
+	"ext": "ts,yaml,json,html",
 	"exec": "node --import ./register.mjs -r dotenv/config ./src/app.ts"
 }
