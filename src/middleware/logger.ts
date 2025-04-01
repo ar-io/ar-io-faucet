@@ -1,6 +1,6 @@
-import crypto from 'node:crypto';
 /**
- * Copyright (C) 2022-2024 Permanent Data Solutions, Inc. All Rights Reserved.
+ * AR.IO Gateway
+ * Copyright (C) 2022-2023 Permanent Data Solutions, Inc. All Rights Reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -15,11 +15,11 @@ import crypto from 'node:crypto';
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import type { Next } from 'koa';
-import type Koa from 'koa';
+import crypto from 'node:crypto';
+import type { Context, Next } from 'koa';
 import logger from '../logger.js';
 
-export async function loggerMiddleware(ctx: Koa.Context, next: Next) {
+export async function loggerMiddleware(ctx: Context, next: Next) {
 	const trace = crypto.randomUUID().substring(0, 6);
 	const log = logger.child({
 		trace,

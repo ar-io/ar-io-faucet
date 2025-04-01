@@ -1,7 +1,23 @@
-import type { JWKInterface } from '@dha-team/arbundles/node';
+/**
+ * AR.IO Gateway
+ * Copyright (C) 2022-2023 Permanent Data Solutions, Inc. All Rights Reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+import type { Arweave, JWKInterface } from '@dha-team/arbundles/node';
 import { createDataItemSigner } from '@permaweb/aoconnect';
 import * as config from '../config.js';
-import { arweave } from '../system.js';
 import type { TokenCache } from '../types.js';
 
 export interface TokenFaucet {
@@ -13,7 +29,7 @@ export interface TokenFaucet {
 		qty?: number;
 	}): Promise<string>;
 	verify(token: string): Promise<boolean>;
-	mint({ token, qty }: { token: string; qty?: number }): Promise<{
+	drip({ token, qty }: { token: string; qty?: number }): Promise<{
 		id: string;
 		status: string;
 		error?: string;
@@ -24,10 +40,12 @@ export class AoTokenFaucet implements TokenFaucet {
 	// dependencies
 	private readonly cache: TokenCache;
 	private readonly wallet: JWKInterface;
+	private readonly arweave: Arweave;
 	private tokenDurationMs: number;
 	private processId: string;
 	private maxQty: number;
 	private defaultQty: number;
+	private issuer: string | undefined;
 	// biome-ignore lint/suspicious/noExplicitAny: External library typing
 	private ao: any;
 	private signer: (...args: unknown[]) => unknown;
@@ -40,6 +58,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		maxQty = config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
 		defaultQty = config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
 		ao,
+		arweave,
 	}: {
 		cache: TokenCache;
 		ao: unknown;
@@ -48,15 +67,25 @@ export class AoTokenFaucet implements TokenFaucet {
 		tokenDurationMs?: number;
 		maxQty?: number;
 		defaultQty?: number;
+		arweave: Arweave;
 	}) {
 		this.cache = cache;
 		this.wallet = wallet;
+		this.arweave = arweave;
 		this.ao = ao;
 		this.tokenDurationMs = tokenDurationMs;
 		this.processId = processId;
 		this.maxQty = maxQty;
 		this.defaultQty = defaultQty;
 		this.signer = createDataItemSigner(wallet);
+	}
+
+	private async getIssuer(): Promise<string> {
+		if (!this.issuer) {
+			this.issuer = await this.arweave.wallets.getAddress(this.wallet);
+		}
+
+		return this.issuer;
 	}
 
 	async request({
@@ -76,7 +105,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		// TODO: add captcha support with a third party integration like cloudflare or google reCAPTCHA to verify proof of human interaction
 
 		const payload = {
-			address: this.wallet.n,
+			issuer: await this.getIssuer(),
 			processId: this.processId,
 			qty: qty ?? this.defaultQty,
 			recipient: recipient,
@@ -88,11 +117,11 @@ export class AoTokenFaucet implements TokenFaucet {
 		};
 
 		const payloadString = JSON.stringify(payload);
-		const signature = await arweave.crypto.sign(
+		const signature = await this.arweave.crypto.sign(
 			this.wallet,
 			Buffer.from(payloadString),
 		);
-		const token = Buffer.from(
+		const authorizationToken = Buffer.from(
 			JSON.stringify({
 				payload: payloadString,
 				signature: Buffer.from(signature).toString('base64'),
@@ -100,9 +129,13 @@ export class AoTokenFaucet implements TokenFaucet {
 		).toString('base64url');
 
 		// set it in our inflight token map
-		this.cache.set(payload.nonce, { ...payload, used: false });
+		this.cache.set(payload.nonce, {
+			...payload,
+			used: false,
+			address: await this.arweave.wallets.getAddress(this.wallet),
+		});
 
-		return token;
+		return authorizationToken;
 	}
 
 	async verify(token: string): Promise<boolean> {
@@ -110,7 +143,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		const { payload: payloadString, signature } = tokenData;
 
 		const payload = JSON.parse(payloadString);
-		const isValid = await arweave.crypto.verify(
+		const isValid = await this.arweave.crypto.verify(
 			this.wallet.n,
 			Buffer.from(payloadString),
 			Buffer.from(signature, 'base64'),
@@ -121,7 +154,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		return isValid && !isExpired && !isUsed;
 	}
 
-	async mint({
+	async drip({
 		token,
 	}: {
 		token: string;

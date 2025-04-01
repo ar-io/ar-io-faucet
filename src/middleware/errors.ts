@@ -15,24 +15,19 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import winston, { format, transports } from 'winston';
-import * as config from './config.js';
+import type { Context, Next } from 'koa';
+import defaultLogger from '../logger.js';
 
-const logger = winston.createLogger({
-	level: config.LOG_LEVEL,
-	format: format.combine(
-		format((info) => {
-			// Only log stack traces when the log level is error
-			if (info.stack && info.level !== 'error') {
-				info.stack = undefined;
-			}
-			return info;
-		})(),
-		format.errors(),
-		format.timestamp(),
-		config.LOG_FORMAT === 'json' ? format.json() : format.simple(),
-	),
-	transports: new transports.Console(),
-});
-
-export default logger;
+// globally handle errors and return proper status based on their type
+export async function errorMiddleware(ctx: Context, next: Next) {
+	const logger = ctx.state.logger || defaultLogger;
+	try {
+		await next();
+	} catch (error) {
+		logger.error('Error processing request.', {
+			error: error instanceof Error ? error.message : error,
+		});
+		ctx.status = 503;
+		ctx.body = { error: 'Internal server error.' };
+	}
+}

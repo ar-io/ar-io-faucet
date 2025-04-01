@@ -15,24 +15,16 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import winston, { format, transports } from 'winston';
-import * as config from './config.js';
+import rateLimit from 'koa-ratelimit';
+import * as config from '../config.js';
 
-const logger = winston.createLogger({
-	level: config.LOG_LEVEL,
-	format: format.combine(
-		format((info) => {
-			// Only log stack traces when the log level is error
-			if (info.stack && info.level !== 'error') {
-				info.stack = undefined;
-			}
-			return info;
-		})(),
-		format.errors(),
-		format.timestamp(),
-		config.LOG_FORMAT === 'json' ? format.json() : format.simple(),
-	),
-	transports: new transports.Console(),
+// rate limit middleware
+export const rateLimitMiddleware = rateLimit({
+	driver: 'memory',
+	db: new Map(),
+	errorMessage: 'Too many requests, please try again later.',
+	id: (ctx) => ctx.ip,
+	duration: config.RATE_LIMIT_WINDOW_MS,
+	max: config.RATE_LIMIT_THRESHOLD,
+	disableHeader: false,
 });
-
-export default logger;
