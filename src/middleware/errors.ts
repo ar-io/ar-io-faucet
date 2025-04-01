@@ -26,6 +26,7 @@ export async function errorMiddleware(ctx: Context, next: Next) {
 	} catch (error) {
 		logger.error('Error processing request.', {
 			error: error instanceof Error ? error.message : error,
+			stack: error instanceof Error ? error.stack : undefined,
 		});
 		ctx.status = 503;
 		ctx.body = { error: 'Internal server error.' };

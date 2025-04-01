@@ -13,7 +13,7 @@ curl -X POST http://localhost:3000/api/request -H "Content-Type: application/jso
 ```
 
 
-## Verification
+## Verifying an Authorization Token
 
 Users can verify an authorization token by sending a GET request to the `/api/verify` endpoint with the token in the query parameters. The token is verified by checking the signature of the token payload and the payload's nonce to ensure the token is valid and has not been used.
 
@@ -27,5 +27,5 @@ curl -X GET http://localhost:3000/api/verify?token=<token>&processId=<processId>
 Users can drip tokens to a recipient by sending a POST request to the `/api/drip` endpoint with the authorization token returned from the `/api/request` endpoint. The authorization token is verified by checking the signature of the token payload and the payload's nonce to ensure the token is valid and has not been used. Once the token is verified, the tokens are transferred to the recipient's wallet address and the token is marked as used.
 
 ```bash
-curl -X POST http://localhost:3000/api/drip -H "Content-Type: application/json" -d '{"token": "token", "processId": "processId"}'
+curl -X POST http://localhost:3000/api/drip -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -d '{"processId": "processId"}'
 ```
