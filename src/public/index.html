@@ -7,66 +7,74 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 </head>
-<body class="bg-black min-h-screen text-white">
-    <div class="min-h-screen m-auto px-4 py-8">
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
         <header class="mb-8">
-            <h1 class="text-3xl font-bold text-center text-white">AR.IO Testnet Faucet</h1>
-            <p class="text-center text-gray-300 mt-2">Request tokens for the AR.IO Testnet</p>
+            <h1 class="text-3xl font-bold text-center text-blue-600">AR.IO Testnet Faucet</h1>
+            <p class="text-center text-gray-600 mt-2">Request tokens for the AR.IO Testnet</p>
         </header>
 
-        <main class="max-w-md mx-auto bg-gray-900 rounded-lg shadow-md p-6">
+        <main class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
             <form id="tokenRequestForm" class="space-y-4">
                 <div>
-                    <label for="recipient" class="block text-sm font-medium text-gray-300">Wallet Address</label>
-                    <input type="text" id="recipient" name="recipient" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <label for="recipient" class="block text-sm font-medium text-gray-700">Wallet Address</label>
+                    <input type="text" id="recipient" name="recipient" required minlength="26" maxlength="64" pattern="^\S*$" 
+                        title="Wallet address must be between 26-64 characters with no spaces"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <div>
-                    <label for="processId" class="block text-sm font-medium text-gray-300">Process ID</label>
+                    <label for="processId" class="block text-sm font-medium text-gray-700">Process ID</label>
                     <select id="processId" name="processId" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         <option value="agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA">AR.IO Testnet</option>
                         <option value="GaQrvEMKBpkjofgnBi_B3IgIDmY_XYelVLB6GcRGrHc">AR.IO Devnet</option>
                     </select>
                 </div>
 
                 <div>
-                    <label for="qty" class="block text-sm font-medium text-gray-300">Quantity (max 10,000)</label>
+                    <label for="qty" class="block text-sm font-medium text-gray-700">Quantity (max 10,000)</label>
                     <input type="number" id="qty" name="qty" min="1" max="10000" value="10000" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <div class="captcha-container">
-                    <label for="captcha" class="block text-sm font-medium text-gray-300">Captcha</label>
-                    <div class="h-captcha p-4" data-sitekey="8050e750-2c24-45e8-86fa-0d56d4384dc8" data-theme="dark"></div>
+                    <label for="captcha" class="block text-sm text-left font-medium text-gray-700">Captcha</label>
+                    <div class="h-captcha py-4" data-sitekey="8050e750-2c24-45e8-86fa-0d56d4384dc8" data-size="normal" data-theme="light"></div>
                 </div>
 
                 <div>
-                    <button type="submit" 
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-gray-100 hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Request Tokens
+                    <button type="submit" id="submitButton"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <span id="buttonText">Request Tokens</span>
+                        <svg id="loadingSpinner" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
                     </button>
                 </div>
             </form>
 
             <div id="resultContainer" class="mt-6 hidden">
-                <div class="p-4 bg-green-900 rounded-md">
-                    <h3 class="text-lg font-medium text-green-300">Token Request Successful</h3>
+                <div class="p-4 bg-green-100 rounded-md">
+                    <h3 class="text-lg font-medium text-green-800">Token Request Successful</h3>
                     <div class="mt-2">
-                        <p class="text-sm text-green-300">Transfer ID:</p>
-                        <p id="tokenResult" class="mt-1 text-xs font-mono bg-gray-700 p-2 rounded break-all"></p>
+                        <p class="text-sm text-green-700">Transfer ID:</p>
+                        <p id="tokenResult" class="mt-1 text-xs font-mono bg-gray-100 p-2 rounded break-all"></p>
                     </div>
-                    <div class="mt-4">
-                        <button id="copyToken" class="text-sm text-blue-400 hover:text-blue-300">Copy to clipboard</button>
+                    <div class="mt-2">
+                        <button id="copyToken" class="text-sm text-blue-600 hover:text-blue-800">Copy to clipboard</button>
+                    </div>
+                    <div class="mt-2">
+                        <a id="aoExplorerLink" href="#" target="_blank" class="mt-1 text-sm text-blue-600 hover:text-blue-800 underline break-all">View on AO</a>
                     </div>
                 </div>
             </div>
 
             <div id="errorContainer" class="mt-6 hidden">
-                <div class="p-4 bg-red-900 rounded-md">
-                    <h3 class="text-lg font-medium text-red-300">Error</h3>
-                    <p id="errorMessage" class="mt-2 text-sm text-red-300"></p>
+                <div class="p-4 bg-red-100 rounded-md">
+                    <h3 class="text-lg font-medium text-red-800">Error</h3>
+                    <p id="errorMessage" class="mt-2 text-sm text-red-700"></p>
                 </div>
             </div>
         </main>
@@ -76,7 +84,7 @@
         // Handle form submission
         document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+            showLoading();
             // Get hCaptcha response
             const hcaptchaResponse = hcaptcha.getResponse();
             if (!hcaptchaResponse) {
@@ -129,23 +137,43 @@
                 showError(error.message);
             }
         });
+
+        function showLoading() {
+            const submitButton = document.getElementById('submitButton');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const buttonText = document.getElementById('buttonText');
+            
+            submitButton.disabled = true;
+            loadingSpinner.classList.remove('hidden');
+            buttonText.textContent = 'Processing...';
+        }
+        
+        function hideLoading() {
+            const submitButton = document.getElementById('submitButton');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const buttonText = document.getElementById('buttonText');
+            
+            submitButton.disabled = false;
+            loadingSpinner.classList.add('hidden');
+            buttonText.textContent = 'Request Tokens';
+        }
         
         function showResult(id) {
             document.getElementById('tokenResult').textContent = id;
+            document.getElementById('aoExplorerLink').href = `https://ao.link/#/message/${id}`;
             document.getElementById('resultContainer').classList.remove('hidden');
             document.getElementById('errorContainer').classList.add('hidden');
-            // clear the form
             document.getElementById('tokenRequestForm').reset();
-            // clear the captcha
             hcaptcha.reset();
+            hideLoading();
         }
         
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
             document.getElementById('errorContainer').classList.remove('hidden');
             document.getElementById('resultContainer').classList.add('hidden');
-            // clear the captcha
             hcaptcha.reset();
+            hideLoading();
         }
         
         // Copy token to clipboard
