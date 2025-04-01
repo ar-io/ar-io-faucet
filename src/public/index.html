@@ -125,7 +125,7 @@
                     },
                     body: JSON.stringify({ recipient, processId, qty: parseInt(qty) })
                 });
-                                
+
                 if (!response.ok) {
                     throw new Error(`Failed to request tokens. ${response.statusText}`);
                 }

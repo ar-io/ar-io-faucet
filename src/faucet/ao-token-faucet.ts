@@ -101,13 +101,36 @@ export class AoTokenFaucet implements TokenFaucet {
 			);
 		}
 
-		// TODO: check the managing wallet has the required balance - this could be reduced into a stateful value that ensures the wallet is never overdrawn
+		const requestedQty = qty ?? this.defaultQty;
+
 		// TODO: add captcha support with a third party integration like cloudflare or google reCAPTCHA to verify proof of human interaction
+
+		const balanceMsg = await this.ao.dryrun({
+			process: this.processId,
+			tags: [
+				{ name: 'Action', value: 'Balance' },
+				{ name: 'Recipient', value: await this.getIssuer() },
+			],
+		});
+
+		if (balanceMsg.Error || balanceMsg.Messages.length === 0) {
+			throw new Error(
+				`Failed to get balance for faucet wallet. ${balanceMsg.Error}`,
+			);
+		}
+
+		const issuerBalance = JSON.parse(balanceMsg.Messages[0].Data);
+
+		if (Number.isNaN(+issuerBalance) || +issuerBalance < requestedQty) {
+			throw new Error(
+				'Faucet wallet has insufficient balance. Please try again later.',
+			);
+		}
 
 		const payload = {
 			issuer: await this.getIssuer(),
 			processId: this.processId,
-			qty: qty ?? this.defaultQty,
+			qty: requestedQty,
 			recipient: recipient,
 			issuedAt: Date.now(),
 			expiresAt: Date.now() + this.tokenDurationMs,
@@ -189,15 +212,21 @@ export class AoTokenFaucet implements TokenFaucet {
 			process: this.processId,
 		});
 
+		const error =
+			transferResult.Error ||
+			transferResult.Messages?.[0]?.Tags?.find(
+				(t: { name: string; value: string }) => t.name === 'Error',
+			)?.value;
+
 		// if no error, delete the token from the cache
-		if (transferResult.Error === undefined) {
+		if (error === undefined) {
 			this.cache.delete(nonce);
 		}
 
 		return {
 			id: msgId,
-			status: transferResult.Error ? 'error' : 'success',
-			error: transferResult.Error,
+			status: error ? 'error' : 'success',
+			error: error,
 		};
 	}
 }
