@@ -14,7 +14,8 @@ RUN yarn install \
     && yarn install --production
 
 # Extract dist
-FROM gcr.io/distroless/nodejs${NODE_VERSION_SHORT}-debian12
+# FROM gcr.io/distroless/nodejs${NODE_VERSION_SHORT}-debian12
+FROM node:${NODE_VERSION_SHORT}-bookworm-slim
 WORKDIR /usr/src/app
 
 # Copy build files

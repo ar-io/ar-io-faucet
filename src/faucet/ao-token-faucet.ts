@@ -1,11 +1,17 @@
 import type { JWKInterface } from '@dha-team/arbundles/node';
-import { message, result } from '@permaweb/aoconnect';
+import { createDataItemSigner } from '@permaweb/aoconnect';
 import * as config from '../config.js';
 import { arweave } from '../system.js';
 import type { TokenCache } from '../types.js';
 
 export interface TokenFaucet {
-	request(recipient: string): Promise<string>;
+	request({
+		recipient,
+		qty,
+	}: {
+		recipient: string;
+		qty?: number;
+	}): Promise<string>;
 	verify(token: string): Promise<boolean>;
 	mint({ token, qty }: { token: string; qty?: number }): Promise<{
 		id: string;
@@ -20,31 +26,59 @@ export class AoTokenFaucet implements TokenFaucet {
 	private readonly wallet: JWKInterface;
 	private tokenDurationMs: number;
 	private processId: string;
+	private maxQty: number;
 	private defaultQty: number;
+	// biome-ignore lint/suspicious/noExplicitAny: External library typing
+	private ao: any;
+	private signer: (...args: unknown[]) => unknown;
+
 	constructor({
 		cache,
 		processId,
-		wallet = config.WALLET,
+		wallet,
 		tokenDurationMs = config.DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS * 1000,
+		maxQty = config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
 		defaultQty = config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
+		ao,
 	}: {
 		cache: TokenCache;
+		ao: unknown;
 		processId: string;
-		wallet?: JWKInterface;
+		wallet: JWKInterface;
 		tokenDurationMs?: number;
+		maxQty?: number;
 		defaultQty?: number;
 	}) {
 		this.cache = cache;
 		this.wallet = wallet;
+		this.ao = ao;
 		this.tokenDurationMs = tokenDurationMs;
 		this.processId = processId;
+		this.maxQty = maxQty;
 		this.defaultQty = defaultQty;
+		this.signer = createDataItemSigner(wallet);
 	}
 
-	async request(recipient: string): Promise<string> {
+	async request({
+		recipient,
+		qty,
+	}: {
+		recipient: string;
+		qty?: number;
+	}): Promise<string> {
+		if (qty && qty > this.maxQty) {
+			throw new Error(
+				`Quantity must be less than or equal to max quantity of ${this.maxQty}`,
+			);
+		}
+
+		// TODO: check the managing wallet has the required balance - this could be reduced into a stateful value that ensures the wallet is never overdrawn
+		// TODO: add captcha support with a third party integration like cloudflare or google reCAPTCHA to verify proof of human interaction
+
 		const payload = {
 			address: this.wallet.n,
 			processId: this.processId,
+			qty: qty ?? this.defaultQty,
 			recipient: recipient,
 			issuedAt: Date.now(),
 			expiresAt: Date.now() + this.tokenDurationMs,
@@ -89,10 +123,8 @@ export class AoTokenFaucet implements TokenFaucet {
 
 	async mint({
 		token,
-		qty,
 	}: {
 		token: string;
-		qty?: number;
 	}): Promise<{ id: string; status: string; error?: string }> {
 		const isValid = await this.verify(token);
 		if (!isValid) {
@@ -102,27 +134,24 @@ export class AoTokenFaucet implements TokenFaucet {
 		const { payload: payloadString } = JSON.parse(
 			Buffer.from(token, 'base64').toString('utf8'),
 		);
-		const { recipient, nonce } = JSON.parse(payloadString);
+		const { recipient, qty, nonce } = JSON.parse(payloadString);
 
 		// assuming token follows token spec, transfer should work
-		const msgId = await message({
+		const msgId = await this.ao.message({
 			process: this.processId,
+			signer: this.signer,
 			tags: [
 				{ name: 'Action', value: 'Transfer' },
 				{ name: 'Recipient', value: recipient },
 				{
 					name: 'Quantity',
-					value: qty?.toString() ?? this.defaultQty.toString(),
+					value: qty.toString(),
 				},
 			],
-			data: JSON.stringify({
-				recipient,
-				qty,
-			}),
 		});
 
 		// check the result
-		const transferResult = await result({
+		const transferResult = await this.ao.result({
 			message: msgId,
 			process: this.processId,
 		});

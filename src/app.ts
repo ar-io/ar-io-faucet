@@ -6,6 +6,7 @@ import logger from './logger.js';
 import { loggerMiddleware } from './middleware/index.js';
 import { rateLimitMiddleware } from './middleware/ratelimit.js';
 import router from './router.js';
+import { walletAddress } from './system.js';
 
 const app = new Koa();
 
@@ -35,7 +36,7 @@ process.on('uncaughtException', (error) => {
 
 // Start server
 app.listen(config.PORT, '0.0.0.0', () => {
-	logger.info(`Listening on port ${config.PORT}`);
+	logger.info(`Listening on port ${config.PORT} with address ${walletAddress}`);
 });
 
 export default app;

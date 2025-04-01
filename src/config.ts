@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import type { JWKInterface } from '@dha-team/arbundles';
 
 // server config
 export const PORT = +(process.env.PORT || 3000);
@@ -17,15 +16,9 @@ export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
 
 // wallet config
 export const WALLET_FILE = process.env.WALLET_FILE;
-export const WALLET: JWKInterface = JSON.parse(
-	WALLET_FILE
-		? fs.readFileSync(WALLET_FILE, 'utf8')
-		: process.env.WALLET || '{}',
-);
-
-if (!WALLET) {
-	throw new Error('WALLET is not set');
-}
+export const WALLET = WALLET_FILE
+	? fs.readFileSync(WALLET_FILE, 'utf8')
+	: process.env.WALLET;
 
 // logging config
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';

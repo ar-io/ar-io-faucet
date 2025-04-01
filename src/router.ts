@@ -8,9 +8,10 @@ router.get('/healthcheck', async (ctx) => {
 });
 
 router.post('/api/request', async (ctx) => {
-	const { recipient, processId } = ctx.request.body as {
+	const { recipient, processId, qty } = ctx.request.body as {
 		recipient?: string;
 		processId?: string;
+		qty?: number;
 	};
 
 	if (!recipient) {
@@ -32,7 +33,10 @@ router.post('/api/request', async (ctx) => {
 		return;
 	}
 
-	const token = await faucet.request(recipient);
+	const token = await faucet.request({
+		recipient,
+		qty: qty ? +qty : undefined,
+	});
 
 	ctx.body = { token };
 });
@@ -65,7 +69,7 @@ router.get('/api/verify', async (ctx) => {
 	ctx.body = { verified: true };
 });
 
-router.post('/api/mint', async (ctx) => {
+router.post('/api/drip', async (ctx) => {
 	const { token, processId } = ctx.request.body as {
 		token?: string;
 		processId?: string;
