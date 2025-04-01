@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR.IO Testnet Token Minting Service</title>
+    <title>AR.IO Testnet Faucet</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -125,12 +125,12 @@
                     },
                     body: JSON.stringify({ recipient, processId, qty: parseInt(qty) })
                 });
-                
-                const data = await response.json();
-                
+                                
                 if (!response.ok) {
-                    throw new Error(data.error || 'Failed to get an authorization token. Please try again.');
+                    throw new Error(`Failed to request tokens. ${response.statusText}`);
                 }
+
+                const data = await response.json();
 
                 // now drip the tokens to the recipient
                 const dripResponse = await fetch('/api/drip', {
@@ -145,7 +145,7 @@
                 const dripData = await dripResponse.json();
 
                 if (!dripResponse.ok) {
-                    throw new Error(dripData.error || 'Failed to drip tokens. Please try again later.');
+                    throw new Error(`Failed to request tokens. ${dripResponse.statusText}`);
                 }
 
                 showResult(dripData.id);

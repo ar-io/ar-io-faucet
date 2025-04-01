@@ -22,9 +22,11 @@ import * as config from '../config.js';
 export const rateLimitMiddleware = rateLimit({
 	driver: 'memory',
 	db: new Map(),
-	errorMessage: 'Too many requests, please try again later.',
+	errorMessage: 'Too many requests.',
 	id: (ctx) => ctx.ip,
-	duration: config.RATE_LIMIT_WINDOW_MS,
+	duration: config.RATE_LIMIT_WINDOW_SECONDS * 1000,
 	max: config.RATE_LIMIT_THRESHOLD,
 	disableHeader: false,
+	// only rate limit the request endpoint
+	whitelist: (ctx) => !ctx.path.includes('/request'),
 });

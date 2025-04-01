@@ -53,16 +53,14 @@ const __dirname = path.dirname(__filename);
 
 const app = new Koa();
 
-// attach middlewares
-app.use(loggerMiddleware);
-app.use(errorMiddleware);
-app.use(rateLimitMiddleware);
+// static files are not rate limited or logged
 app.use(cors());
-
-// static files
 app.use(serve(path.join(__dirname, 'public')));
 
 // api routes
+app.use(loggerMiddleware);
+app.use(errorMiddleware);
+app.use(rateLimitMiddleware);
 app.use(bodyParser());
 app.use(router.routes());
 
