@@ -37,7 +37,8 @@ import { fileURLToPath } from 'node:url';
 import cors from '@koa/cors';
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
-import serve from 'koa-static';
+import Router from 'koa-router';
+import views from 'koa-views';
 import * as config from './config.js';
 import logger from './logger.js';
 import {
@@ -58,7 +59,11 @@ app.use(cors());
 
 // enable simple front-end for testing
 if (!config.DISABLE_SELF_HOSTED_FRONTEND) {
-	app.use(serve(path.join(__dirname, 'public')));
+	app.use(views(path.join(__dirname, './public'), { extension: 'ejs' }));
+	const frontendRouter = new Router().get('/', async (ctx: Koa.Context) => {
+		await ctx.render('index', { captchaSiteKey: config.CAPTCHA_SITE_KEY });
+	});
+	app.use(frontendRouter.routes());
 }
 
 // api routes
