@@ -121,7 +121,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${data.token}`
                     },
-                    body: JSON.stringify({ recipient, processId, qty: parseInt(qty) })
+                    body: JSON.stringify({ recipient, processId, qty: parseInt(qty * 10 ** 6) })
                 });
 
                 const dripData = await dripResponse.json();
