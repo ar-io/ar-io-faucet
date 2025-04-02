@@ -37,7 +37,7 @@ router.post('/api/request', async (ctx) => {
 		return;
 	}
 
-	const { processId, captchaResponse } = tokenRequest.data;
+	const { processId, captchaResponse, sync } = tokenRequest.data;
 
 	if (!config.DISABLE_CAPTCHA_VERIFICATION) {
 		if (!captchaResponse) {
@@ -76,9 +76,29 @@ router.post('/api/request', async (ctx) => {
 	}
 	const authToken = await faucet.request();
 
-	// TODO: if sync provided, use the auth token to drip tokens to the recipient
+	// if not sync, return just the auth token
+	if (!sync) {
+		ctx.body = { token: authToken };
+		return;
+	}
 
-	ctx.body = { token: authToken };
+	// if sync, drip tokens to the recipient
+	const dripRequest = DripRequestSchema.safeParse(ctx.request.body);
+	if (!dripRequest.success) {
+		ctx.status = 400;
+		ctx.body = { error: dripRequest.error.message };
+		return;
+	}
+
+	const { recipient, qty } = dripRequest.data;
+	const { id, status, error } = await faucet.drip({
+		processId,
+		token: authToken,
+		recipient,
+		qty,
+	});
+
+	ctx.body = { id, status, error };
 });
 
 // verify an authorization token
@@ -99,7 +119,6 @@ router.get('/api/verify', async (ctx) => {
 		ctx.body = { error: 'Process ID is required' };
 		return;
 	}
-	console.log('processId', processId);
 
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
@@ -108,11 +127,10 @@ router.get('/api/verify', async (ctx) => {
 		return;
 	}
 
-	const { valid: isValid, payload } = await faucet.verify({
+	const { valid: isValid } = await faucet.verify({
 		token,
 	});
-	console.log('valid', isValid);
-	console.log('payload', payload);
+
 	if (!isValid) {
 		ctx.status = 400;
 		ctx.body = { error: 'Invalid token', success: false };

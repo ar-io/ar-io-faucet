@@ -36,6 +36,7 @@ export interface TokenCache {
 export const AuthTokenRequestSchema = z.object({
 	processId: z.string().min(43, 'Process ID is required'),
 	captchaResponse: z.string().min(1, 'Captcha response is required').optional(),
+	sync: z.boolean().optional().default(false),
 });
 
 export type AuthTokenRequest = z.infer<typeof AuthTokenRequestSchema>;
