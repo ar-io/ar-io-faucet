@@ -140,12 +140,6 @@ export class AoTokenFaucet implements TokenFaucet {
 			},
 		);
 
-		// set it in our inflight token map
-		this.cache.set(payload.nonce, {
-			...payload,
-			used: false,
-		});
-
 		return authorizationToken;
 	}
 
@@ -158,10 +152,10 @@ export class AoTokenFaucet implements TokenFaucet {
 		}) as TokenPayload;
 		const isValid = payload.issuer === (await this.getIssuer());
 		const isExpired = payload.exp < Date.now();
-		const isUsed = (await this.cache.get(payload.nonce))?.used ?? false;
+		const isInCache = await this.cache.get(payload.nonce);
 
 		return {
-			valid: isValid && !isExpired && !isUsed,
+			valid: isValid && !isExpired && !isInCache,
 			payload,
 		};
 	}
@@ -236,9 +230,9 @@ export class AoTokenFaucet implements TokenFaucet {
 				(t: { name: string; value: string }) => t.name === 'Error',
 			)?.value;
 
-		// if no error, delete the token from the cache
 		if (error === undefined) {
-			this.cache.delete(payload.nonce);
+			// add the token to recently used cached, and let the TTL handle the rest
+			this.cache.set(payload.nonce, payload);
 		}
 
 		return {

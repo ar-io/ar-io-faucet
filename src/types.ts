@@ -25,13 +25,9 @@ export interface TokenPayload {
 	nonce: string;
 }
 
-export interface InFlightTokenPayload extends TokenPayload {
-	used: boolean;
-}
-
 export interface TokenCache {
-	get(nonce: string): Promise<InFlightTokenPayload | null>;
-	set(nonce: string, token: InFlightTokenPayload): Promise<void>;
+	get(nonce: string): Promise<TokenPayload | null>;
+	set(nonce: string, token: TokenPayload): Promise<void>;
 	delete(nonce: string): Promise<void>;
 	clear(): Promise<void>;
 	size(): Promise<number>;
