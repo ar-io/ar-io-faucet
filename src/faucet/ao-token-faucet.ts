@@ -17,6 +17,7 @@
  */
 import type { Arweave, JWKInterface } from '@dha-team/arbundles/node';
 import { createDataItemSigner } from '@permaweb/aoconnect';
+import jwkToPem, { type JWK } from 'jwk-to-pem';
 import * as config from '../config.js';
 import type { TokenCache, TokenPayload } from '../types.js';
 
@@ -49,7 +50,11 @@ export class AoTokenFaucet implements TokenFaucet {
 	private issuer: string | undefined;
 	// biome-ignore lint/suspicious/noExplicitAny: External library typing
 	private ao: any;
-	private signer: (...args: unknown[]) => unknown;
+	private aoSigner: (...args: unknown[]) => unknown;
+
+	// biome-ignore lint/suspicious/noExplicitAny: External library typing
+	private authTokenSigner: any;
+	private privateKey: string;
 
 	constructor({
 		cache,
@@ -60,6 +65,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		defaultQty = config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
 		ao,
 		arweave,
+		authTokenSigner,
 	}: {
 		cache: TokenCache;
 		ao: unknown;
@@ -69,6 +75,8 @@ export class AoTokenFaucet implements TokenFaucet {
 		maxQty?: number;
 		defaultQty?: number;
 		arweave: Arweave;
+		// biome-ignore lint/suspicious/noExplicitAny: External library typing
+		authTokenSigner: any;
 	}) {
 		this.cache = cache;
 		this.wallet = wallet;
@@ -78,7 +86,9 @@ export class AoTokenFaucet implements TokenFaucet {
 		this.processId = processId;
 		this.maxQty = maxQty;
 		this.defaultQty = defaultQty;
-		this.signer = createDataItemSigner(wallet);
+		this.aoSigner = createDataItemSigner(this.wallet);
+		this.authTokenSigner = authTokenSigner;
+		this.privateKey = jwkToPem(this.wallet as JWK, { private: true });
 	}
 
 	private async getIssuer(): Promise<string> {
@@ -115,24 +125,20 @@ export class AoTokenFaucet implements TokenFaucet {
 		const payload = {
 			issuer: await this.getIssuer(),
 			processId: this.processId,
-			issuedAt: Date.now(),
-			expiresAt: Date.now() + this.tokenDurationMs,
+			iat: Date.now(),
+			exp: Date.now() + this.tokenDurationMs,
 			nonce:
 				Math.random().toString(36).substring(2, 15) +
 				Math.random().toString(36).substring(2, 15),
 		};
 
-		const payloadString = JSON.stringify(payload);
-		const signature = await this.arweave.crypto.sign(
-			this.wallet,
-			Buffer.from(payloadString),
+		const authorizationToken = this.authTokenSigner.sign(
+			payload,
+			this.privateKey,
+			{
+				algorithm: 'RS256',
+			},
 		);
-		const authorizationToken = Buffer.from(
-			JSON.stringify({
-				payload: payloadString,
-				signature: Buffer.from(signature).toString('base64'),
-			}),
-		).toString('base64url');
 
 		// set it in our inflight token map
 		this.cache.set(payload.nonce, {
@@ -147,21 +153,15 @@ export class AoTokenFaucet implements TokenFaucet {
 		valid: boolean;
 		payload: TokenPayload;
 	}> {
-		const tokenData = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
-		const { payload: payloadString, signature } = tokenData;
-
-		const payload = JSON.parse(payloadString);
-		const isValid = await this.arweave.crypto.verify(
-			this.wallet.n,
-			Buffer.from(payloadString),
-			Buffer.from(signature, 'base64'),
-		);
-		const isExpired = payload.expiresAt < Date.now();
+		const payload = this.authTokenSigner.verify(token, this.privateKey, {
+			algorithms: ['RS256'],
+		}) as TokenPayload;
+		const isValid = payload.issuer === (await this.getIssuer());
+		const isExpired = payload.exp < Date.now();
 		const isUsed = (await this.cache.get(payload.nonce))?.used ?? false;
-		const isQtyValid = payload.qty <= this.maxQty;
 
 		return {
-			valid: isValid && !isExpired && !isUsed && isQtyValid,
+			valid: isValid && !isExpired && !isUsed,
 			payload,
 		};
 	}
@@ -172,6 +172,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		recipient,
 	}: {
 		token: string;
+		processId: string;
 		qty?: number;
 		recipient: string;
 	}): Promise<{ id: string; status: string; error?: string }> {
@@ -212,7 +213,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		// assuming token follows token spec, transfer should work
 		const msgId = await this.ao.message({
 			process: this.processId,
-			signer: this.signer,
+			signer: this.aoSigner,
 			tags: [
 				{ name: 'Action', value: 'Transfer' },
 				{ name: 'Recipient', value: recipient },

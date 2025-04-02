@@ -19,8 +19,9 @@ import { z } from 'zod';
 
 export interface TokenPayload {
 	issuer: string;
-	issuedAt: number;
-	expiresAt: number;
+	processId: string;
+	iat: number;
+	exp: number;
 	nonce: string;
 }
 

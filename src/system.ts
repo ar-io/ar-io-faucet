@@ -21,6 +21,7 @@ import {
 } from '@ar.io/sdk/node';
 import { Arweave } from '@dha-team/arbundles/node';
 import { connect } from '@permaweb/aoconnect/node';
+import jwt from 'jsonwebtoken';
 import { NodeTokenCache } from './cache/token-cache.js';
 import * as config from './config.js';
 import { AoTokenFaucet } from './faucet/ao-token-faucet.js';
@@ -54,6 +55,7 @@ export const supportedProcesses = new Map<string, AoTokenFaucet>([
 			processId: ARIO_TESTNET_PROCESS_ID,
 			ao,
 			arweave,
+			authTokenSigner: jwt,
 		}),
 	],
 	[
@@ -67,6 +69,7 @@ export const supportedProcesses = new Map<string, AoTokenFaucet>([
 			processId: ARIO_DEVNET_PROCESS_ID,
 			ao,
 			arweave,
+			authTokenSigner: jwt,
 		}),
 	],
 ]);

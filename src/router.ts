@@ -99,8 +99,20 @@ router.get('/api/verify', async (ctx) => {
 		ctx.body = { error: 'Process ID is required' };
 		return;
 	}
+	console.log('processId', processId);
 
-	const isValid = await supportedProcesses.get(processId)?.verify({ token });
+	const faucet = supportedProcesses.get(processId);
+	if (!faucet) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process not supported.' };
+		return;
+	}
+
+	const { valid: isValid, payload } = await faucet.verify({
+		token,
+	});
+	console.log('valid', isValid);
+	console.log('payload', payload);
 	if (!isValid) {
 		ctx.status = 400;
 		ctx.body = { error: 'Invalid token', success: false };
@@ -144,6 +156,7 @@ router.post('/api/drip', async (ctx) => {
 	}
 
 	const { id, status, error } = await faucet.drip({
+		processId,
 		token: authToken,
 		recipient,
 		qty,
