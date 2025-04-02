@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 import NodeCache from 'node-cache';
-import type { InFlightTokenPayload, TokenCache } from '../types.js';
+import type { TokenCache, TokenPayload } from '../types.js';
 
 export class NodeTokenCache implements TokenCache {
 	private cache: NodeCache;
@@ -32,11 +32,11 @@ export class NodeTokenCache implements TokenCache {
 		});
 	}
 
-	async get(nonce: string): Promise<InFlightTokenPayload | null> {
+	async get(nonce: string): Promise<TokenPayload | null> {
 		return this.cache.get(nonce) ?? null;
 	}
 
-	async set(nonce: string, token: InFlightTokenPayload): Promise<void> {
+	async set(nonce: string, token: TokenPayload): Promise<void> {
 		this.cache.set(nonce, token);
 	}
 
