@@ -18,18 +18,19 @@
 import type { Arweave, JWKInterface } from '@dha-team/arbundles/node';
 import { createDataItemSigner } from '@permaweb/aoconnect';
 import * as config from '../config.js';
-import type { TokenCache } from '../types.js';
+import type { TokenCache, TokenPayload } from '../types.js';
 
 export interface TokenFaucet {
-	request({
-		recipient,
+	request(): Promise<string>;
+	verify({ token }: { token: string }): Promise<{
+		valid: boolean;
+		payload: TokenPayload;
+	}>;
+	drip({
+		token,
 		qty,
-	}: {
-		recipient: string;
-		qty?: number;
-	}): Promise<string>;
-	verify(token: string): Promise<boolean>;
-	drip({ token, qty }: { token: string; qty?: number }): Promise<{
+		recipient,
+	}: { token: string; qty?: number; recipient: string }): Promise<{
 		id: string;
 		status: string;
 		error?: string;
@@ -88,23 +89,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		return this.issuer;
 	}
 
-	async request({
-		recipient,
-		qty,
-	}: {
-		recipient: string;
-		qty?: number;
-	}): Promise<string> {
-		if (qty && qty > this.maxQty) {
-			throw new Error(
-				`Quantity must be less than or equal to max quantity of ${this.maxQty}`,
-			);
-		}
-
-		const requestedQty = qty ?? this.defaultQty;
-
-		// TODO: add captcha support with a third party integration like cloudflare or google reCAPTCHA to verify proof of human interaction
-
+	async request(): Promise<string> {
 		const balanceMsg = await this.ao.dryrun({
 			process: this.processId,
 			tags: [
@@ -121,7 +106,7 @@ export class AoTokenFaucet implements TokenFaucet {
 
 		const issuerBalance = JSON.parse(balanceMsg.Messages[0].Data);
 
-		if (Number.isNaN(+issuerBalance) || +issuerBalance < requestedQty) {
+		if (Number.isNaN(+issuerBalance) || +issuerBalance < this.defaultQty) {
 			throw new Error(
 				'Faucet wallet has insufficient balance. Please try again later.',
 			);
@@ -130,8 +115,6 @@ export class AoTokenFaucet implements TokenFaucet {
 		const payload = {
 			issuer: await this.getIssuer(),
 			processId: this.processId,
-			qty: requestedQty,
-			recipient: recipient,
 			issuedAt: Date.now(),
 			expiresAt: Date.now() + this.tokenDurationMs,
 			nonce:
@@ -155,13 +138,15 @@ export class AoTokenFaucet implements TokenFaucet {
 		this.cache.set(payload.nonce, {
 			...payload,
 			used: false,
-			address: await this.arweave.wallets.getAddress(this.wallet),
 		});
 
 		return authorizationToken;
 	}
 
-	async verify(token: string): Promise<boolean> {
+	async verify({ token }: { token: string }): Promise<{
+		valid: boolean;
+		payload: TokenPayload;
+	}> {
 		const tokenData = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
 		const { payload: payloadString, signature } = tokenData;
 
@@ -173,24 +158,56 @@ export class AoTokenFaucet implements TokenFaucet {
 		);
 		const isExpired = payload.expiresAt < Date.now();
 		const isUsed = (await this.cache.get(payload.nonce))?.used ?? false;
+		const isQtyValid = payload.qty <= this.maxQty;
 
-		return isValid && !isExpired && !isUsed;
+		return {
+			valid: isValid && !isExpired && !isUsed && isQtyValid,
+			payload,
+		};
 	}
 
 	async drip({
 		token,
+		qty = this.defaultQty,
+		recipient,
 	}: {
 		token: string;
+		qty?: number;
+		recipient: string;
 	}): Promise<{ id: string; status: string; error?: string }> {
-		const isValid = await this.verify(token);
-		if (!isValid) {
+		const { valid, payload } = await this.verify({ token });
+		if (!valid) {
 			throw new Error('Invalid token');
 		}
 
-		const { payload: payloadString } = JSON.parse(
-			Buffer.from(token, 'base64').toString('utf8'),
-		);
-		const { recipient, qty, nonce } = JSON.parse(payloadString);
+		if (qty > this.maxQty) {
+			throw new Error(
+				`Quantity must be less than or equal to max quantity of ${this.maxQty}`,
+			);
+		}
+
+		// verify issuer has enough balance
+		const balanceMsg = await this.ao.dryrun({
+			process: this.processId,
+			tags: [
+				{ name: 'Action', value: 'Balance' },
+				{ name: 'Recipient', value: await this.getIssuer() },
+			],
+		});
+
+		if (balanceMsg.Error || balanceMsg.Messages.length === 0) {
+			throw new Error(
+				`Failed to get balance for faucet wallet. ${balanceMsg.Error}`,
+			);
+		}
+
+		const issuerBalance = JSON.parse(balanceMsg.Messages[0].Data);
+
+		if (Number.isNaN(+issuerBalance) || +issuerBalance < qty) {
+			throw new Error(
+				'Faucet wallet has insufficient balance. Please try again later.',
+			);
+		}
 
 		// assuming token follows token spec, transfer should work
 		const msgId = await this.ao.message({
@@ -220,7 +237,7 @@ export class AoTokenFaucet implements TokenFaucet {
 
 		// if no error, delete the token from the cache
 		if (error === undefined) {
-			this.cache.delete(nonce);
+			this.cache.delete(payload.nonce);
 		}
 
 		return {

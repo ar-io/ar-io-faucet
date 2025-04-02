@@ -18,8 +18,7 @@
 import { z } from 'zod';
 
 export interface TokenPayload {
-	address: string;
-	recipient: string;
+	issuer: string;
 	issuedAt: number;
 	expiresAt: number;
 	nonce: string;
@@ -37,21 +36,17 @@ export interface TokenCache {
 	size(): Promise<number>;
 }
 
-export const TokenRequestSchema = z.object({
-	recipient: z
-		.string()
-		.min(26, 'Wallet address must be at least 26 characters')
-		.max(64, 'Wallet address must be at most 64 characters')
-		.regex(/^\S*$/, 'Wallet address must not contain spaces'),
+export const AuthTokenRequestSchema = z.object({
 	processId: z.string().min(43, 'Process ID is required'),
-	qty: z
-		.number()
-		.int('Quantity must be an integer')
-		.min(1, 'Quantity must be at least 1')
-		.max(10000, 'Quantity must be at most 10,000')
-		.optional()
-		.default(10000),
 	captchaResponse: z.string().min(1, 'Captcha response is required').optional(),
 });
 
-export type TokenRequest = z.infer<typeof TokenRequestSchema>;
+export type AuthTokenRequest = z.infer<typeof AuthTokenRequestSchema>;
+
+export const DripRequestSchema = z.object({
+	processId: z.string().min(43, 'Process ID is required'),
+	recipient: z.string().min(1, 'Recipient is required'),
+	qty: z.number().min(1, 'Quantity is required'),
+});
+
+export type DripRequest = z.infer<typeof DripRequestSchema>;

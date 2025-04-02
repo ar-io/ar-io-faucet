@@ -18,7 +18,7 @@
 import Router from 'koa-router';
 import * as config from './config.js';
 import { supportedProcesses } from './system.js';
-import { TokenRequestSchema } from './types.js';
+import { AuthTokenRequestSchema, DripRequestSchema } from './types.js';
 
 const router = new Router();
 
@@ -29,7 +29,7 @@ router.get('/healthcheck', async (ctx) => {
 
 // request an authorization token
 router.post('/api/request', async (ctx) => {
-	const tokenRequest = TokenRequestSchema.safeParse(ctx.request.body);
+	const tokenRequest = AuthTokenRequestSchema.safeParse(ctx.request.body);
 
 	if (!tokenRequest.success) {
 		ctx.status = 400;
@@ -37,7 +37,7 @@ router.post('/api/request', async (ctx) => {
 		return;
 	}
 
-	const { recipient, processId, qty, captchaResponse } = tokenRequest.data;
+	const { processId, captchaResponse } = tokenRequest.data;
 
 	if (!config.DISABLE_CAPTCHA_VERIFICATION) {
 		if (!captchaResponse) {
@@ -74,12 +74,11 @@ router.post('/api/request', async (ctx) => {
 		ctx.body = { error: 'Process not supported.' };
 		return;
 	}
-	const token = await faucet.request({
-		recipient,
-		qty: qty ? +qty : undefined,
-	});
+	const authToken = await faucet.request();
 
-	ctx.body = { token };
+	// TODO: if sync provided, use the auth token to drip tokens to the recipient
+
+	ctx.body = { token: authToken };
 });
 
 // verify an authorization token
@@ -101,7 +100,7 @@ router.get('/api/verify', async (ctx) => {
 		return;
 	}
 
-	const isValid = await supportedProcesses.get(processId)?.verify(token);
+	const isValid = await supportedProcesses.get(processId)?.verify({ token });
 	if (!isValid) {
 		ctx.status = 400;
 		ctx.body = { error: 'Invalid token', success: false };
@@ -120,22 +119,22 @@ router.post('/api/drip', async (ctx) => {
 		return;
 	}
 
-	const token = authorization.split(' ')[1];
-	const { processId } = ctx.request.body as {
-		processId?: string;
-	};
+	const authToken = authorization.split(' ')[1];
 
-	if (!token) {
+	if (!authToken) {
 		ctx.status = 400;
 		ctx.body = { error: 'Authorization token is required' };
 		return;
 	}
 
-	if (!processId) {
+	const dripRequest = DripRequestSchema.safeParse(ctx.request.body);
+	if (!dripRequest.success) {
 		ctx.status = 400;
-		ctx.body = { error: 'Process ID is required' };
+		ctx.body = { error: dripRequest.error.message };
 		return;
 	}
+
+	const { recipient, qty, processId } = dripRequest.data;
 
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
@@ -144,7 +143,11 @@ router.post('/api/drip', async (ctx) => {
 		return;
 	}
 
-	const { id, status, error } = await faucet.drip({ token });
+	const { id, status, error } = await faucet.drip({
+		token: authToken,
+		recipient,
+		qty,
+	});
 
 	if (error) {
 		ctx.status = 503;

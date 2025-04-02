@@ -6,31 +6,27 @@ This service allows users to drip tokens to a recipient's wallet address on the 
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Frontend
+    participant Client/User
     participant Backend
     participant Token Contract
 
-    Note over User,Token Contract: Authorization Flow
-    User->>Frontend: Enter recipient address and quantity
-    Frontend->>Backend: POST /api/request
-    Note over Backend: Rate limit check
-    Backend-->>Frontend: Return 429 if rate limited
-    Frontend-->>User: Display rate limit error
-    Note over Backend: Captcha verification
-    Note over Backend: Faucet wallet balance check
+    Note over Client/User,Token Contract: Authorization Flow
+    Client/User->>Backend: Request auth token
+    Backend->>Backend: Rate limit check
+    Backend-->>Client/User: Return 429 if rate limited
+    Backend->>Backend: Captcha verification
+    Backend->>Backend: Faucet wallet balance check
     Backend->>Backend: Generate auth token
-    Backend-->>Frontend: Return auth token
-    Frontend-->>User: Display auth token
+    Backend-->>Client/User: Return auth token
 
-    Note over User,Token Contract: Token Drip Flow
-    User->>Frontend: Submit auth token
-    Frontend->>Backend: POST /api/drip
-    Note over Backend: Verify auth token
-    Backend->>Token Contract: Transfer tokens
-    Backend->>Backend: Mark token as used
-    Backend-->>Frontend: Return transfer message id
-    Frontend-->>User: Display transfer message id
+    Note over Client/User,Token Contract: Token Drip Flow
+    Client/User->>Backend: Submit auth token with recipient address and quantity
+    Backend->>Backend: Verify auth token
+    Backend->>Backend: Verify faucet balance
+    Backend->>Token Contract: Send transfer notice to recipient
+    Token Contract-->>Backend: Confirm transfer
+    Backend->>Backend: Mark authorization token as used
+    Backend-->>Client/User: Return transfer message id
 ```
 
 
@@ -39,7 +35,7 @@ sequenceDiagram
 Users can request an authorization token for a recipient by sending a POST request to the `/api/request` endpoint with the recipient's address in the request body. The request body must also include a `processId` which is used to identify the process that is requesting the token. Once the authorization token is requested, it can be used to drip tokens to the recipient's wallet address via the `/api/drip` endpoint. By default, the authorization token will allocate 10,000 tokens to the recipient.
 
 ```bash
-curl -X POST http://localhost:3000/api/request -H "Content-Type: application/json" -d '{"recipient": "<recipient_address>", "processId": "<processId>", "qty": <qty> }'
+curl -X POST http://localhost:3000/api/request -H "Content-Type: application/json" -d '{"processId": "<processId>"}'
 ```
 
 
@@ -57,7 +53,7 @@ curl -X GET http://localhost:3000/api/verify?token=<token>&processId=<processId>
 Users can then drip tokens to a recipient by sending a POST request to the `/api/drip` endpoint with the authorization token returned from the `/api/request` endpoint. The authorization token is verified by checking the signature of the token payload and the payload's nonce to ensure the token is valid and has not been used. Once the token is verified, the tokens are transferred to the recipient's wallet address and the authorization token is marked as used.
 
 ```bash
-curl -X POST http://localhost:3000/api/drip -H "Content-Type: application/json" -H "Authorization: Bearer <auth-token>" -d '{"processId": "<processId>"}'
+curl -X POST http://localhost:3000/api/drip -H "Content-Type: application/json" -H "Authorization: Bearer <auth-token>" -d '{"processId": "<processId>", "recipient": "<recipient_address>", "qty": <qty> }'
 ```
 
 
