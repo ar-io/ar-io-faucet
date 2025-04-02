@@ -55,7 +55,11 @@ const app = new Koa();
 
 // static files are not rate limited or logged
 app.use(cors());
-app.use(serve(path.join(__dirname, 'public')));
+
+// enable simple front-end for testing
+if (!config.DISABLE_SELF_HOSTED_FRONTEND) {
+	app.use(serve(path.join(__dirname, 'public')));
+}
 
 // api routes
 app.use(loggerMiddleware);

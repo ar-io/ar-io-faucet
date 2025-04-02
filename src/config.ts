@@ -31,6 +31,10 @@ export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
 	(process.env.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY || 10_000_000_000) // 10k ARIO
 );
 
+// frontend config
+export const DISABLE_SELF_HOSTED_FRONTEND =
+	process.env.DISABLE_SELF_HOSTED_FRONTEND === 'true';
+
 // wallet config
 export const WALLET_FILE = process.env.WALLET_FILE;
 export const WALLET = WALLET_FILE
