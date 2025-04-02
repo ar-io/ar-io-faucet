@@ -49,9 +49,9 @@
 		"typescript": "^5.8.2"
 	},
 	"scripts": {
-		"start": "node dist/app.js",
+		"start": "node -r dotenv/config dist/app.js",
 		"start:watch": "nodemon",
-		"build": "yarn clean && yarn && npx tsc --project ./tsconfig.json",
+		"build": "yarn clean && yarn && npx tsc --project ./tsconfig.json && cp -r src/public dist/public",
 		"clean": "rm -rf dist",
 		"lint:fix": "biome check --write --unsafe && eslint --fix src",
 		"lint:check": "biome check --unsafe && eslint src",
