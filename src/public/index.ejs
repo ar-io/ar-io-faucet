@@ -104,7 +104,10 @@
                     },
                     body: JSON.stringify({ 
                         processId, 
-                        captchaResponse: hcaptchaResponse 
+                        captchaResponse: hcaptchaResponse,
+                        sync: true,
+                        recipient,
+                        qty: parseInt(qty * 10 ** 6)
                     })
                 });
 
@@ -114,23 +117,7 @@
 
                 const data = await response.json();
 
-                // now drip the tokens to the recipient
-                const dripResponse = await fetch('/api/drip', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${data.token}`
-                    },
-                    body: JSON.stringify({ recipient, processId, qty: parseInt(qty * 10 ** 6) })
-                });
-
-                const dripData = await dripResponse.json();
-
-                if (!dripResponse.ok) {
-                    throw new Error(`Failed to request tokens. ${dripResponse.statusText}`);
-                }
-
-                showResult(dripData.id);
+                showResult(data.id);
             } catch (error) {
                 showError(error.message);
             }
