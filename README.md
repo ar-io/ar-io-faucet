@@ -2,9 +2,9 @@
 
 ## Overview
 
-This service allows users to drip tokens to a recipient's wallet address on the AR.IO Testnet using an asynchronous tokenized voucher system. It features a simple API for requesting and verifying tokens, and a second API for dripping tokens to a recipient's wallet address. Additional protections, including rate limiting and captcha support, are enabled by default.
+This service allows users to drip tokens to a recipient's wallet address on the AR.IO Testnet using an asynchronous tokenized voucher system. It features a simple API for requesting and verifying authorization tokens, and a second API for dripping tokens to a recipient's wallet address. Additional protections, including rate limiting and captcha support, are enabled by default.
 
-## Requesting a Token
+## Requesting an Authorization Token
 
 Users can request an authorization token for a recipient by sending a POST request to the `/api/request` endpoint with the recipient's address in the request body. The request body must also include a `processId` which is used to identify the process that is requesting the token. Once the authorization token is requested, it can be used to drip tokens to the recipient's wallet address via the `/api/drip` endpoint. By default, the authorization token will allocate 10,000 tokens to the recipient.
 
@@ -37,7 +37,7 @@ The service includes a rate limiting mechanism to prevent abuse. By default, the
 
 ## Captcha Protection
 
-The service includes a captcha protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be dripped. This can be disabled by setting the `CAPTCHA_ENABLED` environment variable to `false`.
+The service includes a [hCaptcha](https://hcaptcha.com/) protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be dripped. This can be disabled by setting the `DISABLE_CAPTCHA_VERIFICATION` environment variable to `true`.
 
 ## Environment Variables
 
