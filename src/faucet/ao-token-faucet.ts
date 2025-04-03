@@ -30,7 +30,7 @@ export interface TokenFaucet {
 		valid: boolean;
 		payload: TokenPayload;
 	}>;
-	drip({ qty, recipient }: { qty?: number; recipient: string }): Promise<{
+	claim({ qty, recipient }: { qty?: number; recipient: string }): Promise<{
 		id: string;
 		status: string;
 		error?: string;
@@ -165,7 +165,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		};
 	}
 
-	async drip({
+	async claim({
 		qty = this.defaultQty,
 		recipient,
 	}: {

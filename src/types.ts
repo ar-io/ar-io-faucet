@@ -42,19 +42,19 @@ export const CaptchaRequestSchema = z.object({
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
-export const DripRequestSchema = z.object({
+export const ClaimRequestSchema = z.object({
 	processId: z.string().min(43, 'Process ID is required'),
 	recipient: z.string().min(1, 'Recipient is required'),
 	qty: z.number().min(1, 'Quantity is required'),
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
-export const AsyncDripRequestSchema = z.object({
+export const AsyncClaimRequestSchema = z.object({
 	processId: z.string().min(43, 'Process ID is required'),
 	recipient: z.string().min(1, 'Recipient is required'),
 	qty: z.number().min(1, 'Quantity is required'),
 });
 
 export type AuthTokenRequest = z.infer<typeof AuthTokenRequestSchema>;
-export type DripRequest = z.infer<typeof DripRequestSchema>;
-export type AsyncDripRequest = z.infer<typeof AsyncDripRequestSchema>;
+export type ClaimRequest = z.infer<typeof ClaimRequestSchema>;
+export type AsyncClaimRequest = z.infer<typeof AsyncClaimRequestSchema>;

@@ -1,8 +1,50 @@
 # AR.IO Testnet Token Minting Service
 
-## Overview
+This service supports a request-based workflow for acquiring tokens on the AR.IO Testnet Network. It supports a captcha-based authorization token flow, and enforces strict rate limiting to prevent abuse.
 
-This service allows users to drip tokens to a recipient's wallet address on the AR.IO Testnet using an asynchronous authorization token system. It features APIs for requesting and verifying authorization tokens, and an additional API for dripping tokens to a recipient's wallet address. Additional protections, including rate limiting and captcha support, are enabled by default , but can be disabled/modified through respective [environment variables](#environment-variables).
+- [Claiming Tokens](#claiming-tokens)
+  - [Synchronous Workflow](#synchronous-workflow)
+  - [Asynchronous Workflow](#asynchronous-workflow)
+    - [Requesting an Authorization Token](#requesting-an-authorization-token)
+    - [Verifying an Authorization Token](#verifying-an-authorization-token)
+    - [Claiming Tokens with an Authorization Token](#claiming-tokens-with-an-authorization-token)
+- [Rate Limiting](#rate-limiting)
+- [Captcha Protection](#captcha-protection)
+
+## Claiming Tokens
+
+### Synchronous Workflow
+
+```mermaid
+sequenceDiagram
+    participant Client/User
+    participant Backend
+    participant Token
+
+    Client/User->>Backend: Send token request with captcha
+    Backend->>Backend: Rate limit check
+    Backend-->>Client/User: Return 429 if rate limited
+    Backend->>Backend: Captcha verification
+    Backend-->>Client/User: Return 400 if captcha verification fails
+    Backend->>Backend: Faucet wallet balance check
+    Backend->>Token: Send transfer notice to contract
+    Token-->>Backend: Confirm transfer
+    Backend-->>Client/User: Return transfer message id
+```
+
+To claim tokens synchronously with a captcha response, send a POST request to the `/api/claim/sync` endpoint with the following JSON body:
+
+```bash
+curl -X POST http://localhost:3000/api/claim/sync -H "Content-Type: application/json" -d '{"captchaResponse": "<captcha-response>", "recipient": "<recipient-address>", "qty": "<quantity>"}'
+```
+
+The response will be a JSON object with the following properties:
+
+- `id`: The transaction id of the token transfer, if successful.
+- `status`: The status of the claim request.
+- `error`: The error message if the claim request failed.
+
+### Asynchronous Workflow
 
 ```mermaid
 sequenceDiagram
@@ -14,12 +56,13 @@ sequenceDiagram
     Client/User->>Backend: Request auth token
     Backend->>Backend: Rate limit check
     Backend-->>Client/User: Return 429 if rate limited
-    Backend->>Backend: Captcha verification
-    Backend->>Backend: Faucet wallet balance check
-    Backend->>Backend: Generate auth token
+    Backend-->>Client/User: Return captcha URL
+
+    Client/User->>Backend: Solve captcha
+    Backend->>Backend: Verify captcha
     Backend-->>Client/User: Return auth token
 
-    Note over Client/User,Token Contract: Token Drip Flow
+    Note over Client/User,Token Contract: Async claim Flow
     Client/User->>Backend: Submit auth token with recipient address and quantity
     Backend->>Backend: Verify auth token
     Backend->>Backend: Verify faucet balance
@@ -29,55 +72,63 @@ sequenceDiagram
     Backend-->>Client/User: Return transfer message id
 ```
 
+#### Requesting an Authorization Token
 
-## Requesting an Authorization Token
-
-Users can request an authorization token for a recipient by sending a POST request to the `/api/request` endpoint with the recipient's address in the request body. The request body must also include a `processId` which is used to identify the process that is requesting the token. Once the authorization token is requested, it can be used to drip tokens to the recipient's wallet address via the `/api/drip` endpoint. By default, the authorization token will allocate 10,000 tokens to the recipient.
-
-```bash
-curl -X POST http://localhost:3000/api/request -H "Content-Type: application/json" -d '{"processId": "<processId>"}'
-```
-
-
-## Verifying an Authorization Token
-
-Users can verify an authorization token by sending a GET request to the `/api/verify` endpoint with the token in the query parameters. The token is verified by checking the signature of the token payload and the payload's nonce to ensure the token is valid and has not been used.
+Users can request an authorization token for a recipient by sending a GET request to the `/api/request` endpoint with the processId in the query parameters. The request body must also include a `processId` which is used to identify the process that is requesting the token.
 
 ```bash
-curl -X GET http://localhost:3000/api/verify?token=<token>&processId=<processId>
+curl -X GET http://localhost:3000/api/request?processId=<processId>
 ```
 
+The response will be a JSON object with the following properties:
 
-## Dripping Tokens
+- `processId`: The processId of the process that is requesting the token.
+- `captchaUrl`: The URL for the captcha. This URL will redirect to the front-end where the user can solve the captcha and then return to the back-end with the token.
 
-Users can then drip tokens to a recipient by sending a POST request to the `/api/drip` endpoint with the authorization token returned from the `/api/request` endpoint. The authorization token is verified by checking the signature of the token payload and the payload's nonce to ensure the token is valid and has not been used. Once the token is verified, the tokens are transferred to the recipient's wallet address and the authorization token is marked as used.
+
+#### Verifying an Authorization Token
+
+Users can verify an existing authorization token by sending a GET request to the `/api/token/verify` endpoint with the token in the query parameters.
 
 ```bash
-curl -X POST http://localhost:3000/api/drip -H "Content-Type: application/json" -H "Authorization: Bearer <auth-token>" -d '{"processId": "<processId>", "recipient": "<recipient_address>", "qty": <qty> }'
+curl -X GET http://localhost:3000/api/token/verify?process-id=<processId> -H "Authorization: Bearer <auth-token>"
 ```
 
+The response will be a JSON object with the following properties:
+
+- `valid`: Whether the token is valid and can be used to claim tokens.
+- `expiresAt`: The timestamp when the token will expire.
+
+### Claiming Tokens with an Authorization Token
+
+Users can then claim tokens to a recipient by sending a POST request to the `/api/claim/async` endpoint with the authorization token returned after the captcha is solved. The authorization token is verified, the faucet balance is checked, and the tokens are transferred to the recipient's wallet address.
+
+```bash
+curl -X POST http://localhost:3000/api/claim/async -H "Content-Type: application/json" -H "Authorization: Bearer <auth-token>" -d '{"processId": "<processId>", "recipient": "<recipient_address>", "qty": <qty> }'
+```
 
 ## Rate Limiting
 
-The service includes a rate limiting mechanism to prevent abuse. By default, the `/api/request` endpoint is limited to 1 requests per hour. This can be adjusted by changing the `RATE_LIMIT_*` environment variables.
+The service includes a rate limiting mechanism to prevent abuse, defaulting to 100 requests per hour. This can be adjusted by changing the `RATE_LIMIT_*` environment variables.
 
 ## Captcha Protection
 
-The service includes a [hCaptcha](https://hcaptcha.com/) protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be dripped. This can be disabled by setting the `DISABLE_CAPTCHA_VERIFICATION` environment variable to `true`.
+The service includes a [hCaptcha](https://hcaptcha.com/) protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be claimped. This can be disabled by setting the `DISABLE_CAPTCHA_VERIFICATION` environment variable to `true`.
+
 
 ## Environment Variables
 
 The service supports the following environment variables:
 
-- `RATE_LIMIT_WINDOW_MS`: The rate limit window in milliseconds (e.g. 1 hour).
-- `RATE_LIMIT_THRESHOLD`: The rate limit threshold (e.g. 100 requests per window).
+- `RATE_LIMIT_WINDOW_MS`: The rate limit window in milliseconds (e.g. 1 hour)
+- `RATE_LIMIT_THRESHOLD`: The rate limit threshold (e.g. 100 requests per window)
 - `CAPTCHA_ENABLED`: Whether captcha protection is enabled. By default, the service will require a captcha.
 - `CAPTCHA_SECRET`: The secret key for the captcha. This is used to verify the captcha on the back-end.
 - `CAPTCHA_SITE_KEY`: The site key for the captcha. This is used to render the captcha on the front-end.
 - `CAPTCHA_SITE_VERIFY_URL`: The URL for the captcha site verify endpoint (defaults to `https://hcaptcha.com/siteverify`).
 - `DISABLE_CAPTCHA_VERIFICATION`: Whether captcha verification is disabled. By default, the service will require a captcha.
 - `DISABLE_SELF_HOSTED_FRONTEND`: Whether the self-hosted front-end is disabled. By default, the service will serve a simple front-end for testing.
-- `WALLET_FILE`: The path to the wallet file. This is the wallet that will be used to drip the tokens to the recipient's wallet address and is used to sign authorization tokens.
+- `WALLET_FILE`: The path to the wallet file. This wallet is must have sufficient balance of requested tokens.
 - `PORT`: The port for the service to run on
 - `LOG_LEVEL`: The log level for the service.
 - `LOG_FORMAT`: The log format for the service.

@@ -97,7 +97,7 @@
             const qty = document.getElementById('qty').value;
             
             try {
-                const response = await fetch('/api/drip/sync', {
+                const response = await fetch('/api/claim/sync', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

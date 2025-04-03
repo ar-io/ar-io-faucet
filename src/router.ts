@@ -19,9 +19,9 @@ import Router from 'koa-router';
 import * as config from './config.js';
 import { captcha, supportedProcesses } from './system.js';
 import {
-	AsyncDripRequestSchema,
+	AsyncClaimRequestSchema,
 	CaptchaRequestSchema,
-	DripRequestSchema,
+	ClaimRequestSchema,
 } from './types.js';
 
 const router = new Router();
@@ -32,7 +32,7 @@ router.get('/healthcheck', async (ctx) => {
 });
 
 // route to request auth URL for satisfying captcha
-router.get('/api/request', async (ctx) => {
+router.get('/api/token/request', async (ctx) => {
 	const { 'process-id': processId } = ctx.query as {
 		'process-id': string;
 	};
@@ -70,7 +70,7 @@ router.get('/captcha', async (ctx) => {
 });
 
 // verify a captcha response and return an auth token good for 1 hour
-router.post('/api/verify', async (ctx) => {
+router.post('/api/captcha/verify', async (ctx) => {
 	const parsedCaptchaRequest = CaptchaRequestSchema.safeParse(ctx.request.body);
 	if (!parsedCaptchaRequest.success) {
 		ctx.status = 400;
@@ -100,7 +100,7 @@ router.post('/api/verify', async (ctx) => {
 		}
 	}
 
-	// now create a token they can use to drip tokens
+	// now create a token they can use to claim tokens
 	const token = await faucet.requestAuthToken();
 	ctx.body = {
 		status: 'success',
@@ -109,8 +109,34 @@ router.post('/api/verify', async (ctx) => {
 	};
 });
 
-// drip tokens to a recipient using an authorization token
-router.post('/api/drip/async', async (ctx) => {
+// verify an existing auth token
+router.get('/api/token/verify', async (ctx) => {
+	const authorization = ctx.request.headers.authorization;
+	if (!authorization) {
+		ctx.status = 401;
+		ctx.body = { error: 'Unauthorized' };
+		return;
+	}
+
+	const authToken = authorization.split(' ')[1];
+
+	const { processId } = ctx.query as {
+		processId: string;
+	};
+
+	const faucet = supportedProcesses.get(processId);
+	if (!faucet) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process not supported.' };
+		return;
+	}
+
+	const { valid, payload } = await faucet.verifyAuthToken({ token: authToken });
+	ctx.body = { valid, expiresAt: payload.exp };
+});
+
+// claim tokens to a recipient using an authorization token
+router.post('/api/claim/async', async (ctx) => {
 	const authorization = ctx.request.headers.authorization;
 	if (!authorization) {
 		ctx.status = 401;
@@ -121,14 +147,14 @@ router.post('/api/drip/async', async (ctx) => {
 	const authToken = authorization.split(' ')[1];
 
 	// parse the request body
-	const dripRequest = AsyncDripRequestSchema.safeParse(ctx.request.body);
-	if (!dripRequest.success) {
+	const claimRequest = AsyncClaimRequestSchema.safeParse(ctx.request.body);
+	if (!claimRequest.success) {
 		ctx.status = 400;
-		ctx.body = { error: dripRequest.error.message };
+		ctx.body = { error: claimRequest.error.message };
 		return;
 	}
 
-	const { recipient, qty, processId } = dripRequest.data;
+	const { recipient, qty, processId } = claimRequest.data;
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
 		ctx.status = 400;
@@ -136,7 +162,6 @@ router.post('/api/drip/async', async (ctx) => {
 		return;
 	}
 
-	// verify the auth token
 	const { valid } = await faucet.verifyAuthToken({ token: authToken });
 	if (!valid) {
 		ctx.status = 401;
@@ -144,7 +169,7 @@ router.post('/api/drip/async', async (ctx) => {
 		return;
 	}
 
-	const { id, status, error } = await faucet.drip({
+	const { id, status, error } = await faucet.claim({
 		recipient,
 		qty,
 	});
@@ -152,18 +177,17 @@ router.post('/api/drip/async', async (ctx) => {
 	ctx.body = { id, status, error };
 });
 
-// drip tokens to a recipient using a captcha response
-router.post('/api/drip/sync', async (ctx) => {
-	const dripRequest = DripRequestSchema.safeParse(ctx.request.body);
-	if (!dripRequest.success) {
+// claim tokens to a recipient using a captcha response
+router.post('/api/claim/sync', async (ctx) => {
+	const claimRequest = ClaimRequestSchema.safeParse(ctx.request.body);
+	if (!claimRequest.success) {
 		ctx.status = 400;
-		ctx.body = { error: dripRequest.error.message };
+		ctx.body = { error: claimRequest.error.message };
 		return;
 	}
 
-	const { recipient, qty, processId, captchaResponse } = dripRequest.data;
+	const { recipient, qty, processId, captchaResponse } = claimRequest.data;
 
-	// verify the captcha
 	if (!config.DISABLE_CAPTCHA_VERIFICATION && captcha) {
 		const captchaResult = await captcha.verifyCaptchaResponse({
 			captchaResponse,
@@ -183,14 +207,14 @@ router.post('/api/drip/sync', async (ctx) => {
 		return;
 	}
 
-	const { id, status, error } = await faucet.drip({
+	const { id, status, error } = await faucet.claim({
 		recipient,
 		qty,
 	});
 
 	if (error) {
 		ctx.status = 503;
-		ctx.body = { error: 'Failed to drip tokens', message: error };
+		ctx.body = { error: 'Failed to claim tokens', message: error };
 		return;
 	}
 
