@@ -64,7 +64,8 @@
 		"format:check": "biome format",
 		"test": "yarn test:e2e",
 		"test:e2e": "node --import ./register.mjs --test-reporter=spec --test-concurrency 1 --test tests/**/**.test.ts",
-		"prepare": "simple-git-hooks"
+		"prepare": "simple-git-hooks",
+		"render": "node -r dotenv/config render.mjs"
 	},
 	"simple-git-hooks": {
 		"pre-commit": "npx lint-staged"

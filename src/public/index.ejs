@@ -103,8 +103,8 @@
         const lightIcon = document.getElementById('lightIcon');
         const darkIcon = document.getElementById('darkIcon');
 
-        // Check for saved theme preference, otherwise use system preference
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        // Check for saved theme preference, default to light mode
+        if (localStorage.theme === 'dark') {
             document.documentElement.classList.add('dark');
             lightIcon.classList.remove('hidden');
             darkIcon.classList.add('hidden');
@@ -144,7 +144,7 @@
             const qty = document.getElementById('qty').value;
             
             try {
-                const response = await fetch('/api/claim/sync', {
+                const response = await fetch('<%= baseUrl %>/api/claim/sync', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

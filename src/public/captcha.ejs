@@ -83,7 +83,7 @@
         const darkIcon = document.getElementById('darkIcon');
 
         // Check for saved theme preference, otherwise use system preference
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        if (localStorage.theme === 'dark') {
             document.documentElement.classList.add('dark');
             lightIcon.classList.remove('hidden');
             darkIcon.classList.add('hidden');

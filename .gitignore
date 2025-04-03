@@ -2,3 +2,4 @@ dist
 wallets/*.json
 .env
 node_modules
+public

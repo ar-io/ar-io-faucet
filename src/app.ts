@@ -44,7 +44,10 @@ app.use(cors());
 if (config.ENABLE_SELF_HOSTED_FRONTEND) {
 	app.use(views(path.join(__dirname, './public'), { extension: 'ejs' }));
 	const frontendRouter = new Router().get('/', async (ctx: Koa.Context) => {
-		await ctx.render('index', { captchaSiteKey: config.CAPTCHA_SITE_KEY });
+		await ctx.render('index', {
+			captchaSiteKey: config.CAPTCHA_SITE_KEY,
+			baseUrl: '',
+		});
 	});
 	app.use(frontendRouter.routes());
 }
