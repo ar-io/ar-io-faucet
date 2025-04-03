@@ -76,10 +76,10 @@ sequenceDiagram
 
 #### Requesting an Authorization Token
 
-Users can request an authorization token for a recipient by sending a GET request to the `/api/request` endpoint with the processId in the query parameters. The request body must also include a `processId` which is used to identify the process that is requesting the token.
+Users can request a captcha URL by sending a GET request to the `/api/token/request` endpoint with the `process-id` in the query parameters.
 
 ```bash
-curl -X GET http://localhost:3000/api/token/request?processId=<processId>
+curl -X GET http://localhost:3000/api/token/request?process-id=<processId>
 ```
 
 The response will be a JSON object with the following properties:
@@ -106,7 +106,7 @@ The response will be a JSON object with the following properties:
 Users can then claim tokens to a recipient by sending a POST request to the `/api/claim/async` endpoint with the authorization token returned after the captcha is solved. The authorization token is verified, the faucet balance is checked, and the tokens are transferred to the recipient's wallet address.
 
 ```bash
-curl -X POST http://localhost:3000/api/claim/async -H "Content-Type: application/json" -H "Authorization: Bearer <auth-token>" -d '{"processId": "<processId>", "recipient": "<recipient_address>", "qty": <qty> }'
+curl -X POST http://localhost:3000/api/claim/async -H "Content-Type: application/json" -H "Authorization: Bearer <auth-token>" -d '{"processId": "<process_id>", "recipient": "<recipient_address>", "qty": <qty> }'
 ```
 
 ## Rate Limiting
