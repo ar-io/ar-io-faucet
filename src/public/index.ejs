@@ -6,48 +6,65 @@
     <title>AR.IO Testnet Faucet</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+     <script>
+      // Enable dark mode via class strategy
+      tailwind.config = {
+        darkMode: 'class',
+      };
+    </script>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-transparent min-h-screen dark:bg-gray-900 transition-colors duration-200">
     <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-end mb-4">
+            <button id="themeToggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700">
+                <svg id="lightIcon" class="w-6 h-6 text-gray-800 dark:text-gray-200 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <svg id="darkIcon" class="w-6 h-6 text-gray-800 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </div>
+
         <header class="mb-8">
-            <h1 class="text-3xl font-bold text-center text-blue-600">AR.IO Testnet Faucet</h1>
-            <p class="text-center text-gray-600 mt-2">Request tokens for the AR.IO Testnet</p>
+            <h1 class="text-3xl font-bold text-center text-black dark:text-white">AR.IO Testnet Faucet</h1>
+            <p class="text-center text-gray-600 dark:text-gray-400 mt-2">Request tokens for the AR.IO Testnet</p>
         </header>
 
-        <main class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+        <main class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
             <form id="tokenRequestForm" class="space-y-4">
                 <div>
-                    <label for="recipient" class="block text-sm font-medium text-gray-700">Wallet Address</label>
+                    <label for="recipient" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wallet Address</label>
                     <input type="text" id="recipient" name="recipient" required minlength="26" maxlength="64" pattern="^\S*$" 
                         title="Wallet address must be between 26-64 characters with no spaces"
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
                 </div>
 
                 <div>
-                    <label for="processId" class="block text-sm font-medium text-gray-700">Process ID</label>
+                    <label for="processId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Process ID</label>
                     <select id="processId" name="processId" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
                         <option value="agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA">AR.IO Testnet</option>
                         <option value="GaQrvEMKBpkjofgnBi_B3IgIDmY_XYelVLB6GcRGrHc">AR.IO Devnet</option>
                     </select>
                 </div>
 
                 <div>
-                    <label for="qty" class="block text-sm font-medium text-gray-700">Quantity (max 10,000)</label>
+                    <label for="qty" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity (max 10,000)</label>
                     <input type="number" id="qty" name="qty" min="1" max="10000" value="10000" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
                 </div>
 
                 <div class="captcha-container">
-                    <label for="captcha" class="block text-sm text-left font-medium text-gray-700">Captcha</label>
-                    <div class="h-captcha py-4" data-sitekey="<%= captchaSiteKey %>" data-size="normal" data-theme="light"></div>
+                    <label for="captcha" class="block text-sm text-left font-medium text-gray-700 dark:text-gray-300">Captcha</label>
+                    <div class="h-captcha py-4 flex justify-center" data-sitekey="<%= captchaSiteKey %>" data-size="normal" data-theme="light"></div>
                 </div>
 
                 <div>
                     <button type="submit" id="submitButton"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black dark:bg-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black dark:focus:ring-white">
                         <span id="buttonText">Request Tokens</span>
-                        <svg id="loadingSpinner" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg id="loadingSpinner" class="animate-spin ml-2 h-5 w-5 text-white dark:text-black hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -56,31 +73,61 @@
             </form>
 
             <div id="resultContainer" class="mt-6 hidden">
-                <div class="p-4 bg-green-100 rounded-md">
-                    <h3 class="text-lg font-medium text-green-800">Token Request Successful</h3>
+                <div class="p-4 bg-green-100 dark:bg-green-900 rounded-md">
+                    <h3 class="text-lg font-medium text-green-800 dark:text-green-200">Token Request Successful</h3>
                     <div class="mt-2">
-                        <p class="text-sm text-green-700">Transfer ID:</p>
-                        <p id="tokenResult" class="mt-1 text-xs font-mono bg-gray-100 p-2 rounded break-all"></p>
+                        <p class="text-sm text-green-700 dark:text-green-300">Transfer ID:</p>
+                        <p id="tokenResult" class="mt-1 text-xs font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded break-all dark:text-white"></p>
                     </div>
                     <div class="mt-2">
-                        <button id="copyToken" class="text-sm text-blue-600 hover:text-blue-800">Copy to clipboard</button>
+                        <button id="copyToken" class="text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200">Copy to clipboard</button>
                     </div>
                     <div class="mt-2">
-                        <a id="aoExplorerLink" href="#" target="_blank" class="mt-1 text-sm text-blue-600 hover:text-blue-800 underline break-all">View on AO</a>
+                        <a id="aoExplorerLink" href="#" target="_blank" class="mt-1 text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200 underline break-all">View on AO</a>
                     </div>
                 </div>
             </div>
 
             <div id="errorContainer" class="mt-6 hidden">
-                <div class="p-4 bg-red-100 rounded-md">
-                    <h3 class="text-lg font-medium text-red-800">Error</h3>
-                    <p id="errorMessage" class="mt-2 text-sm text-red-700"></p>
+                <div class="p-4 bg-red-100 dark:bg-red-900 rounded-md">
+                    <h3 class="text-lg font-medium text-red-800 dark:text-red-200">Error</h3>
+                    <p id="errorMessage" class="mt-2 text-sm text-red-700 dark:text-red-300"></p>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('lightIcon');
+        const darkIcon = document.getElementById('darkIcon');
+
+        // Check for saved theme preference, otherwise use system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            lightIcon.classList.remove('hidden');
+            darkIcon.classList.add('hidden');
+        } else {
+            document.documentElement.classList.remove('dark');
+            lightIcon.classList.add('hidden');
+            darkIcon.classList.remove('hidden');
+        }
+
+        themeToggle.addEventListener('click', function() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            }
+        });
+
         // Handle form submission
         document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
             e.preventDefault();
