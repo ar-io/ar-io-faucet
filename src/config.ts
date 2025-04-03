@@ -33,7 +33,7 @@ export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
 
 // frontend config
 export const ENABLE_SELF_HOSTED_FRONTEND =
-	process.env.ENABLE_SELF_HOSTED_FRONTEND === 'true';
+	process.env.ENABLE_SELF_HOSTED_FRONTEND !== 'false';
 export const FRONT_END_URL =
 	process.env.FRONT_END_URL || `http://localhost:${PORT}`;
 
@@ -55,7 +55,7 @@ export const RATE_LIMIT_THRESHOLD = +(process.env.RATE_LIMIT_THRESHOLD || 10); /
 
 // captcha config
 export const REQUIRE_CAPTCHA_VERIFICATION =
-	process.env.REQUIRE_CAPTCHA_VERIFICATION === 'true';
+	process.env.REQUIRE_CAPTCHA_VERIFICATION !== 'false';
 export const CAPTCHA_SITE_VERIFY_URL = process.env.CAPTCHA_SITE_VERIFY_URL;
 export const CAPTCHA_SITE_KEY = process.env.CAPTCHA_SITE_KEY;
 export const CAPTCHA_SECRET_KEY = process.env.CAPTCHA_SECRET_KEY;
