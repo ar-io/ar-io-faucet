@@ -87,8 +87,8 @@ router.post('/api/verify', async (ctx) => {
 		return;
 	}
 
-	if (config.DISABLE_CAPTCHA_VERIFICATION) {
-		const captchaResult = await captcha?.verifyCaptchaResponse({
+	if (!config.DISABLE_CAPTCHA_VERIFICATION && captcha) {
+		const captchaResult = await captcha.verifyCaptchaResponse({
 			captchaResponse,
 			remoteip: ctx.ip,
 		});
