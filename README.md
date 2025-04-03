@@ -93,7 +93,8 @@ The response will be a JSON object with the following properties:
 Users can verify an existing authorization token by sending a GET request to the `/api/token/verify` endpoint with the token in the query parameters.
 
 ```bash
-curl -X GET http://localhost:3000/api/token/verify?process-id=<processId> -H "Authorization: Bearer <auth-token>"
+curl -X GET http://localhost:3000/api/token/verify?process-id=<processId> \
+ -H "Authorization: Bearer <auth-token>"
 ```
 
 The response will be a JSON object with the following properties:
@@ -106,24 +107,29 @@ The response will be a JSON object with the following properties:
 Users can then claim tokens to a recipient by sending a POST request to the `/api/claim/async` endpoint with the authorization token returned after the captcha is solved. The authorization token is verified, the faucet balance is checked, and the tokens are transferred to the recipient's wallet address.
 
 ```bash
-curl -X POST http://localhost:3000/api/claim/async -H "Content-Type: application/json" -H "Authorization: Bearer <auth-token>" -d '{"processId": "<process_id>", "recipient": "<recipient_address>", "qty": <qty> }'
+curl -X POST http://localhost:3000/api/claim/async \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer <auth-token>" \
+ -d '{"processId": "<process_id>", "recipient": "<recipient_address>", "qty": <qty> }'
 ```
 
 ## Rate Limiting
 
-The service includes a rate limiting mechanism to prevent abuse, defaulting to 100 requests per hour. This can be adjusted by changing the `RATE_LIMIT_*` environment variables.
+The service includes various rate limiting mechanisms to prevent abuse, defaulting to a global rate limit of 10 requests per hour and a captcha rate limit of 1 request per hour. This can be adjusted by changing the `*_RATE_LIMIT_*` environment variables.
 
 ## Captcha Protection
 
-The service includes a [hCaptcha](https://hcaptcha.com/) protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be claimped. This can be disabled by setting the `DISABLE_CAPTCHA_VERIFICATION` environment variable to `true`.
+The service includes a [hCaptcha](https://hcaptcha.com/) protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be claimed. This can be disabled by setting the `DISABLE_CAPTCHA_VERIFICATION` environment variable to `true`.
 
 
 ## Environment Variables
 
 The service supports the following environment variables:
 
-- `RATE_LIMIT_WINDOW_MS`: The rate limit window in milliseconds (e.g. 1 hour)
-- `RATE_LIMIT_THRESHOLD`: The rate limit threshold (e.g. 100 requests per window)
+- `GLOBAL_RATE_LIMIT_WINDOW_SECONDS`: The global rate limit window in seconds (e.g. 1 hour)
+- `GLOBAL_RATE_LIMIT_THRESHOLD`: The global rate limit threshold (e.g. 100 requests per window)
+- `CAPTCHA_RATE_LIMIT_WINDOW_SECONDS`: The captcha rate limit window in seconds (e.g. 1 hour)
+- `CAPTCHA_RATE_LIMIT_THRESHOLD`: The captcha rate limit threshold (e.g. 100 requests per window)
 - `CAPTCHA_ENABLED`: Whether captcha protection is enabled. By default, the service will require a captcha.
 - `CAPTCHA_SECRET`: The secret key for the captcha. This is used to verify the captcha on the back-end.
 - `CAPTCHA_SITE_KEY`: The site key for the captcha. This is used to render the captcha on the front-end.
