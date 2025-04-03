@@ -3,3 +3,4 @@ wallets/*.json
 .env
 node_modules
 public
+.DS_Store

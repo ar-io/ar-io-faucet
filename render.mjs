@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import ejs from 'ejs';
-import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import ejs from 'ejs';
+import { mkdir, readFile, writeFile } from 'fs/promises';
 
 /* eslint-disable no-undef */
 const captchaSiteKey = process.env.CAPTCHA_SITE_KEY;
