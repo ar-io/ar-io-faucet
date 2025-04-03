@@ -128,8 +128,8 @@ The service supports the following environment variables:
 - `CAPTCHA_SECRET`: The secret key for the captcha. This is used to verify the captcha on the back-end.
 - `CAPTCHA_SITE_KEY`: The site key for the captcha. This is used to render the captcha on the front-end.
 - `CAPTCHA_SITE_VERIFY_URL`: The URL for the captcha site verify endpoint (defaults to `https://hcaptcha.com/siteverify`).
-- `DISABLE_CAPTCHA_VERIFICATION`: Whether captcha verification is disabled. By default, the service will require a captcha.
-- `DISABLE_SELF_HOSTED_FRONTEND`: Whether the self-hosted front-end is disabled. By default, the service will serve a simple front-end for testing.
+- `REQUIRE_CAPTCHA_VERIFICATION`: Whether captcha verification is required, defaults to `true`.
+- `ENABLE_SELF_HOSTED_FRONTEND`: Whether the self-hosted front-end is enabled, defaults to `true`.
 - `WALLET_FILE`: The path to the wallet file. This wallet is must have sufficient balance of requested tokens.
 - `PORT`: The port for the service to run on
 - `LOG_LEVEL`: The log level for the service.
