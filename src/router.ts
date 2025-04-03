@@ -15,6 +15,24 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+import rateLimit from 'koa-ratelimit';
+/**
+ * AR.IO Gateway
+ * Copyright (C) 2022-2023 Permanent Data Solutions, Inc. All Rights Reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 import Router from 'koa-router';
 import * as config from './config.js';
 import { captcha, supportedProcesses } from './system.js';
@@ -70,44 +88,56 @@ router.get('/captcha', async (ctx) => {
 });
 
 // verify a captcha response and return an auth token good for 1 hour
-router.post('/api/captcha/verify', async (ctx) => {
-	const parsedCaptchaRequest = CaptchaRequestSchema.safeParse(ctx.request.body);
-	if (!parsedCaptchaRequest.success) {
-		ctx.status = 400;
-		ctx.body = { error: parsedCaptchaRequest.error.message };
-		return;
-	}
-
-	const { processId, captchaResponse } = parsedCaptchaRequest.data;
-
-	const faucet = supportedProcesses.get(processId);
-	if (!faucet) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process not supported.' };
-		return;
-	}
-
-	if (config.REQUIRE_CAPTCHA_VERIFICATION && captcha) {
-		const captchaResult = await captcha.verifyCaptchaResponse({
-			captchaResponse,
-			remoteip: ctx.ip,
-		});
-
-		if (!captchaResult) {
+router.post(
+	'/api/captcha/verify',
+	rateLimit({
+		driver: 'memory',
+		db: new Map(),
+		duration: config.CAPTCHA_RATE_LIMIT_WINDOW_SECONDS * 1000,
+		max: config.CAPTCHA_RATE_LIMIT_THRESHOLD, // 1 request per window
+		disableHeader: false,
+	}),
+	async (ctx) => {
+		const parsedCaptchaRequest = CaptchaRequestSchema.safeParse(
+			ctx.request.body,
+		);
+		if (!parsedCaptchaRequest.success) {
 			ctx.status = 400;
-			ctx.body = { error: 'Captcha verification failed' };
+			ctx.body = { error: parsedCaptchaRequest.error.message };
 			return;
 		}
-	}
 
-	// now create a token they can use to claim tokens
-	const token = await faucet.requestAuthToken();
-	ctx.body = {
-		status: 'success',
-		token: token.token,
-		expiresAt: token.expiresAt,
-	};
-});
+		const { processId, captchaResponse } = parsedCaptchaRequest.data;
+
+		const faucet = supportedProcesses.get(processId);
+		if (!faucet) {
+			ctx.status = 400;
+			ctx.body = { error: 'Process not supported.' };
+			return;
+		}
+
+		if (config.REQUIRE_CAPTCHA_VERIFICATION && captcha) {
+			const captchaResult = await captcha.verifyCaptchaResponse({
+				captchaResponse,
+				remoteip: ctx.ip,
+			});
+
+			if (!captchaResult) {
+				ctx.status = 400;
+				ctx.body = { error: 'Captcha verification failed' };
+				return;
+			}
+		}
+
+		// now create a token they can use to claim tokens
+		const token = await faucet.requestAuthToken();
+		ctx.body = {
+			status: 'success',
+			token: token.token,
+			expiresAt: token.expiresAt,
+		};
+	},
+);
 
 // verify an existing auth token
 router.get('/api/token/verify', async (ctx) => {

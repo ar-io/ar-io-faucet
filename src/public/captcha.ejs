@@ -32,7 +32,7 @@
 </header>
     
     <main class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-      <form id="captchaForm">
+      <form id="tokenRequestForm">
         <div class="mb-4">
           <label for="processId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Process ID:</label>
           <input type="text" id="processId" name="processId" value="<%= processId %>" disabled required 
@@ -54,16 +54,27 @@
                 </button>
       </form>
       
-      <div id="resultContainer" class="mt-4 p-4 rounded-md hidden">
-        <p id="resultMessage" class="text-sm"></p>
-        <div id="tokenContainer" class="mt-2 mb-2 hidden">
-          <span id="tokenExpiry" class="text-sm text-gray-700 dark:text-gray-300 mb-1"></span>
-          <div id="tokenDisplay" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-2 rounded-md text-xs font-mono break-all"></div>
-          <button id="copyToken" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">Copy to clipboard</button>
+      <div id="resultContainer" class="mt-6 hidden">
+        <div class="p-4 bg-green-100 dark:bg-green-900 rounded-md">
+            <h3 class="text-lg font-medium text-green-800 dark:text-green-200">Success!</h3>
+            <div class="mt-2">
+                <p class="text-sm text-black dark:text-white-300">Authorization Token:</p>
+                <p id="tokenResult" class="mt-1 text-xs font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded break-all dark:text-white"></p>
+            </div>
+            <div class="mt-2">
+                <button id="copyToken" class="text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200">Copy to clipboard</button>
+            </div>
         </div>
       </div>
+
+      <div id="errorContainer" class="mt-6 hidden">
+          <div class="p-4 bg-red-100 dark:bg-red-900 rounded-md">
+              <h3 class="text-lg font-medium text-red-800 dark:text-red-200">Error</h3>
+              <p id="errorMessage" class="mt-2 text-sm text-red-700 dark:text-red-300"></p>
+          </div>
+      </div>
     </main>
-    </div>
+  </div>
 
   <script>
         // Theme toggle functionality
@@ -97,14 +108,14 @@
         });
 
 
-    document.getElementById('captchaForm').addEventListener('submit', async function(e) {
+    document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       showLoading();
       const processId = document.getElementById('processId').value;
       const captchaResponse = hcaptcha.getResponse();
       
       if (!captchaResponse) {
-        showResult('Please complete the captcha first.', false);
+        showError('Please complete the captcha first.');
         return;
       }
       
@@ -120,15 +131,15 @@
           })
         });
         
-        const data = await response.json();
-        
-        if (response.ok) {
-          showResult({ message: 'Success!', success: true, token: data.token, expiresAt: data.expiresAt });
-        } else {
-          showResult({ message: 'Error: ' + (data.error || 'Unknown error occurred'), success: false });
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(body);
         }
+        
+        const data = await response.json();
+        showResult(data.token);
       } catch (error) {
-        showResult({ message: 'Error: ' + error.message, success: false });
+        showError(error.message);
       }
       
       // Reset captcha
@@ -136,52 +147,50 @@
     });
 
      function showLoading() {
-            const submitButton = document.getElementById('submitButton');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const buttonText = document.getElementById('buttonText');
-            
-            submitButton.disabled = true;
-            loadingSpinner.classList.remove('hidden');
-            buttonText.textContent = 'Processing...';
-        }
-
-        function hideLoading() {
-            const submitButton = document.getElementById('submitButton');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const buttonText = document.getElementById('buttonText');
-            
-            submitButton.disabled = false;
-            loadingSpinner.classList.add('hidden');
-            buttonText.textContent = 'Get Authorization Token';
-        }
+        const submitButton = document.getElementById('submitButton');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const buttonText = document.getElementById('buttonText');
         
-    
-    function showResult(result) {
-      const resultContainer = document.getElementById('resultContainer');
-      const resultMessage = document.getElementById('resultMessage');
-      
-      resultMessage.textContent = result.message;
-      resultContainer.classList.remove('hidden', 'bg-green-50', 'border-green-200', 'text-green-800', 'bg-red-50', 'border-red-200', 'text-red-800', 'dark:bg-green-900', 'dark:border-green-700', 'dark:text-green-200', 'dark:bg-red-900', 'dark:border-red-700', 'dark:text-red-200');
-      
-      if (result.success) {
-        resultContainer.classList.add('bg-green-50', 'dark:bg-green-900', 'border', 'border-green-200', 'dark:border-green-700', 'text-green-800', 'dark:text-green-200');
-        const tokenContainer = document.getElementById('tokenContainer');
-        const tokenDisplay = document.getElementById('tokenDisplay');
-        const copyToken = document.getElementById('copyToken');
-        tokenContainer.classList.remove('hidden');
-        tokenDisplay.textContent = result.token;
-        tokenExpiry.textContent = `Expiration: ${new Date(result.expiresAt).toLocaleString()}`;
-      } else {
-        resultContainer.classList.add('bg-red-50', 'dark:bg-red-900', 'border', 'border-red-200', 'dark:border-red-700', 'text-red-800', 'dark:text-red-200');
-      }
-      
-      resultContainer.classList.remove('hidden');
-      hideLoading();
+        submitButton.disabled = true;
+        loadingSpinner.classList.remove('hidden');
+        buttonText.textContent = 'Processing...';
     }
 
+    function hideLoading() {
+        const submitButton = document.getElementById('submitButton');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const buttonText = document.getElementById('buttonText');
+        
+        submitButton.disabled = false;
+        loadingSpinner.classList.add('hidden');
+        buttonText.textContent = 'Get Authorization Token';
+    }
+
+    function hideResult() {
+        const resultContainer = document.getElementById('resultContainer');
+        resultContainer.classList.add('hidden');
+    }
+
+    function showResult(token) {
+        document.getElementById('tokenResult').textContent = token;
+        document.getElementById('resultContainer').classList.remove('hidden');
+        document.getElementById('errorContainer').classList.add('hidden');
+        document.getElementById('tokenRequestForm').reset();
+        hcaptcha.reset();
+        hideLoading();
+    }
+    
+    function showError(message) {
+        document.getElementById('errorMessage').textContent = message;
+        document.getElementById('errorContainer').classList.remove('hidden');
+        document.getElementById('resultContainer').classList.add('hidden');
+        hcaptcha.reset();
+        hideLoading();
+    }
+    
     // Copy token to clipboard
     document.getElementById('copyToken').addEventListener('click', function() {
-      const tokenText = document.getElementById('tokenDisplay').textContent;
+      const tokenText = document.getElementById('tokenResult').textContent;
       navigator.clipboard.writeText(tokenText).then(function() {
         this.textContent = 'Copied!';
         setTimeout(() => {

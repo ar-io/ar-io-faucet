@@ -18,13 +18,12 @@
 import rateLimit from 'koa-ratelimit';
 import * as config from '../config.js';
 
-// rate limit middleware
+// global rate limit middleware
 export const rateLimitMiddleware = rateLimit({
 	driver: 'memory',
 	db: new Map(),
-	errorMessage: 'Too many requests.',
 	id: (ctx) => ctx.ip,
-	duration: config.RATE_LIMIT_WINDOW_SECONDS * 1000,
-	max: config.RATE_LIMIT_THRESHOLD,
+	duration: config.GLOBAL_RATE_LIMIT_WINDOW_SECONDS * 1000,
+	max: config.GLOBAL_RATE_LIMIT_THRESHOLD,
 	disableHeader: false,
 });

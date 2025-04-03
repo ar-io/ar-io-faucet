@@ -48,10 +48,18 @@ export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 export const LOG_FORMAT = process.env.LOG_FORMAT || 'json';
 
 // rate limiting config
-export const RATE_LIMIT_WINDOW_SECONDS = +(
-	(process.env.RATE_LIMIT_WINDOW_SECONDS || 3600) // 1 hour
+export const GLOBAL_RATE_LIMIT_WINDOW_SECONDS = +(
+	(process.env.GLOBAL_RATE_LIMIT_WINDOW_SECONDS || 3600) // 1 hour
 );
-export const RATE_LIMIT_THRESHOLD = +(process.env.RATE_LIMIT_THRESHOLD || 10); // 10 requests per 1 hour
+export const GLOBAL_RATE_LIMIT_THRESHOLD = +(
+	process.env.GLOBAL_RATE_LIMIT_THRESHOLD || 10
+); // 10 requests per 1 hour
+export const CAPTCHA_RATE_LIMIT_WINDOW_SECONDS = +(
+	process.env.CAPTCHA_RATE_LIMIT_WINDOW_SECONDS || 3600
+); // 1 hour
+export const CAPTCHA_RATE_LIMIT_THRESHOLD = +(
+	process.env.CAPTCHA_RATE_LIMIT_THRESHOLD || 1
+); // 1 requests per 1 hour
 
 // captcha config
 export const REQUIRE_CAPTCHA_VERIFICATION =
