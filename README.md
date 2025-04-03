@@ -79,7 +79,7 @@ sequenceDiagram
 Users can request an authorization token for a recipient by sending a GET request to the `/api/request` endpoint with the processId in the query parameters. The request body must also include a `processId` which is used to identify the process that is requesting the token.
 
 ```bash
-curl -X GET http://localhost:3000/api/request?processId=<processId>
+curl -X GET http://localhost:3000/api/token/request?processId=<processId>
 ```
 
 The response will be a JSON object with the following properties:
