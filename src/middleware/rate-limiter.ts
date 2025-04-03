@@ -27,6 +27,4 @@ export const rateLimitMiddleware = rateLimit({
 	duration: config.RATE_LIMIT_WINDOW_SECONDS * 1000,
 	max: config.RATE_LIMIT_THRESHOLD,
 	disableHeader: false,
-	// only rate limit the request endpoint
-	whitelist: (ctx) => !ctx.path.includes('/request'),
 });
