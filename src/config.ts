@@ -34,6 +34,8 @@ export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
 // frontend config
 export const DISABLE_SELF_HOSTED_FRONTEND =
 	process.env.DISABLE_SELF_HOSTED_FRONTEND === 'true';
+export const FRONT_END_URL =
+	process.env.FRONT_END_URL || `http://localhost:${PORT}`;
 
 // wallet config
 export const WALLET_FILE = process.env.WALLET_FILE;

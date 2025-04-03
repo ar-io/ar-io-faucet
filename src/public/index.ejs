@@ -97,7 +97,7 @@
             const qty = document.getElementById('qty').value;
             
             try {
-                const response = await fetch('/api/request', {
+                const response = await fetch('/api/drip/sync', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -105,7 +105,6 @@
                     body: JSON.stringify({ 
                         processId, 
                         captchaResponse: hcaptchaResponse,
-                        sync: true,
                         recipient,
                         qty: parseInt(qty * 10 ** 6)
                     })

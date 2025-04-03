@@ -22,16 +22,15 @@ import * as config from '../config.js';
 import type { TokenCache, TokenPayload } from '../types.js';
 
 export interface TokenFaucet {
-	request(): Promise<string>;
-	verify({ token }: { token: string }): Promise<{
+	requestAuthToken(): Promise<{
+		token: string;
+		expiresAt: number;
+	}>;
+	verifyAuthToken({ token }: { token: string }): Promise<{
 		valid: boolean;
 		payload: TokenPayload;
 	}>;
-	drip({
-		token,
-		qty,
-		recipient,
-	}: { token: string; qty?: number; recipient: string }): Promise<{
+	drip({ qty, recipient }: { qty?: number; recipient: string }): Promise<{
 		id: string;
 		status: string;
 		error?: string;
@@ -99,7 +98,10 @@ export class AoTokenFaucet implements TokenFaucet {
 		return this.issuer;
 	}
 
-	async request(): Promise<string> {
+	async requestAuthToken(): Promise<{
+		token: string;
+		expiresAt: number;
+	}> {
 		const balanceMsg = await this.ao.dryrun({
 			process: this.processId,
 			tags: [
@@ -140,10 +142,13 @@ export class AoTokenFaucet implements TokenFaucet {
 			},
 		);
 
-		return authorizationToken;
+		return {
+			token: authorizationToken,
+			expiresAt: +payload.exp,
+		};
 	}
 
-	async verify({ token }: { token: string }): Promise<{
+	async verifyAuthToken({ token }: { token: string }): Promise<{
 		valid: boolean;
 		payload: TokenPayload;
 	}> {
@@ -161,20 +166,12 @@ export class AoTokenFaucet implements TokenFaucet {
 	}
 
 	async drip({
-		token,
 		qty = this.defaultQty,
 		recipient,
 	}: {
-		token: string;
-		processId: string;
 		qty?: number;
 		recipient: string;
 	}): Promise<{ id: string; status: string; error?: string }> {
-		const { valid, payload } = await this.verify({ token });
-		if (!valid) {
-			throw new Error('Invalid token');
-		}
-
 		if (qty > this.maxQty) {
 			throw new Error(
 				`Quantity must be less than or equal to max quantity of ${this.maxQty}`,
@@ -229,11 +226,6 @@ export class AoTokenFaucet implements TokenFaucet {
 			transferResult.Messages?.[0]?.Tags?.find(
 				(t: { name: string; value: string }) => t.name === 'Error',
 			)?.value;
-
-		if (error === undefined) {
-			// add the token to recently used cached, and let the TTL handle the rest
-			this.cache.set(payload.nonce, payload);
-		}
 
 		return {
 			id: msgId,

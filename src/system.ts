@@ -23,6 +23,7 @@ import { Arweave } from '@dha-team/arbundles/node';
 import { connect } from '@permaweb/aoconnect/node';
 import jwt from 'jsonwebtoken';
 import { NodeTokenCache } from './cache/token-cache.js';
+import { hCaptchaVerifier } from './captcha/hcaptcha.js';
 import * as config from './config.js';
 import { AoTokenFaucet } from './faucet/ao-token-faucet.js';
 
@@ -36,6 +37,13 @@ export const ao = connect({
 	MODE: 'legacy',
 	CU_URL: 'https://cu.ardrive.io',
 });
+
+export const captcha = config.CAPTCHA_SECRET_KEY
+	? new hCaptchaVerifier({
+			secretKey: config.CAPTCHA_SECRET_KEY as string,
+			siteVerifyUrl: config.CAPTCHA_SITE_VERIFY_URL as string,
+		})
+	: undefined;
 
 const wallet = config.WALLET
 	? JSON.parse(config.WALLET)
