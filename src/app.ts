@@ -41,7 +41,7 @@ const app = new Koa();
 app.use(cors());
 
 // enable simple front-end for testing
-if (!config.DISABLE_SELF_HOSTED_FRONTEND) {
+if (config.ENABLE_SELF_HOSTED_FRONTEND) {
 	app.use(views(path.join(__dirname, './public'), { extension: 'ejs' }));
 	const frontendRouter = new Router().get('/', async (ctx: Koa.Context) => {
 		await ctx.render('index', { captchaSiteKey: config.CAPTCHA_SITE_KEY });

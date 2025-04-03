@@ -25,5 +25,5 @@
 		"swc": true,
 		"esm": true
 	},
-	"include": ["src", "test", "scripts", "**/*.mjs"]
+	"include": ["src", "tests", "scripts", "**/*.mjs"]
 }

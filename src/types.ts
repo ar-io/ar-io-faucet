@@ -34,23 +34,23 @@ export interface TokenCache {
 }
 
 export const AuthTokenRequestSchema = z.object({
-	processId: z.string().min(43, 'Process ID is required'),
+	processId: z.string().min(1, 'Process ID is required'),
 });
 
 export const CaptchaRequestSchema = z.object({
-	processId: z.string().min(43, 'Process ID is required'),
+	processId: z.string().min(1, 'Process ID is required'),
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
 export const ClaimRequestSchema = z.object({
-	processId: z.string().min(43, 'Process ID is required'),
+	processId: z.string().min(1, 'Process ID is required'),
 	recipient: z.string().min(1, 'Recipient is required'),
 	qty: z.number().min(1, 'Quantity is required'),
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
 export const AsyncClaimRequestSchema = z.object({
-	processId: z.string().min(43, 'Process ID is required'),
+	processId: z.string().min(1, 'Process ID is required'),
 	recipient: z.string().min(1, 'Recipient is required'),
 	qty: z.number().min(1, 'Quantity is required'),
 });

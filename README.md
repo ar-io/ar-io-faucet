@@ -1,6 +1,8 @@
 # AR.IO Testnet Token Minting Service
 
-This service supports a request-based workflow for acquiring tokens on the AR.IO Testnet Network. It supports a captcha-based authorization token flow, and enforces strict rate limiting to prevent abuse.
+This service supports a request-based workflow for acquiring tokens on the AR.IO Testnet Network.
+
+## Table of Contents
 
 - [Claiming Tokens](#claiming-tokens)
   - [Synchronous Workflow](#synchronous-workflow)

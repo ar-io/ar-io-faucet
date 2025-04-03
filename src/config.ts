@@ -32,8 +32,8 @@ export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
 );
 
 // frontend config
-export const DISABLE_SELF_HOSTED_FRONTEND =
-	process.env.DISABLE_SELF_HOSTED_FRONTEND === 'true';
+export const ENABLE_SELF_HOSTED_FRONTEND =
+	process.env.ENABLE_SELF_HOSTED_FRONTEND === 'true';
 export const FRONT_END_URL =
 	process.env.FRONT_END_URL || `http://localhost:${PORT}`;
 
@@ -54,17 +54,8 @@ export const RATE_LIMIT_WINDOW_SECONDS = +(
 export const RATE_LIMIT_THRESHOLD = +(process.env.RATE_LIMIT_THRESHOLD || 10); // 10 requests per 1 hour
 
 // captcha config
-export const DISABLE_CAPTCHA_VERIFICATION =
-	process.env.DISABLE_CAPTCHA_VERIFICATION === 'true';
+export const REQUIRE_CAPTCHA_VERIFICATION =
+	process.env.REQUIRE_CAPTCHA_VERIFICATION === 'true';
 export const CAPTCHA_SITE_VERIFY_URL = process.env.CAPTCHA_SITE_VERIFY_URL;
 export const CAPTCHA_SITE_KEY = process.env.CAPTCHA_SITE_KEY;
 export const CAPTCHA_SECRET_KEY = process.env.CAPTCHA_SECRET_KEY;
-
-if (
-	DISABLE_CAPTCHA_VERIFICATION &&
-	(!CAPTCHA_SITE_VERIFY_URL || !CAPTCHA_SECRET_KEY || !CAPTCHA_SITE_KEY)
-) {
-	throw new Error(
-		'CAPTCHA_SECRET_KEY, CAPTCHA_SITE_VERIFY_URL, and CAPTCHA_SITE_KEY must be set if DISABLE_CAPTCHA_VERIFICATION is false',
-	);
-}

@@ -46,13 +46,13 @@ router.get('/api/token/request', async (ctx) => {
 	// return the URL and temporary token
 	ctx.body = {
 		processId,
-		captchaUrl: `${config.FRONT_END_URL}/captcha?processId=${processId}`,
+		captchaUrl: `${config.FRONT_END_URL}/captcha?process-id=${processId}`,
 	};
 });
 
 router.get('/captcha', async (ctx) => {
-	const { processId } = ctx.query as {
-		processId: string;
+	const { 'process-id': processId } = ctx.query as {
+		'process-id': string;
 	};
 
 	const faucet = supportedProcesses.get(processId);
@@ -87,7 +87,7 @@ router.post('/api/captcha/verify', async (ctx) => {
 		return;
 	}
 
-	if (!config.DISABLE_CAPTCHA_VERIFICATION && captcha) {
+	if (config.REQUIRE_CAPTCHA_VERIFICATION && captcha) {
 		const captchaResult = await captcha.verifyCaptchaResponse({
 			captchaResponse,
 			remoteip: ctx.ip,
@@ -188,7 +188,7 @@ router.post('/api/claim/sync', async (ctx) => {
 
 	const { recipient, qty, processId, captchaResponse } = claimRequest.data;
 
-	if (!config.DISABLE_CAPTCHA_VERIFICATION && captcha) {
+	if (config.REQUIRE_CAPTCHA_VERIFICATION && captcha) {
 		const captchaResult = await captcha.verifyCaptchaResponse({
 			captchaResponse,
 			remoteip: ctx.ip,
