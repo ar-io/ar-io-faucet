@@ -26,4 +26,8 @@ export const rateLimitMiddleware = rateLimit({
 	duration: config.GLOBAL_RATE_LIMIT_WINDOW_SECONDS * 1000,
 	max: config.GLOBAL_RATE_LIMIT_THRESHOLD,
 	disableHeader: false,
+	whitelist: (ctx) => {
+		// don't rate limit requests to satisfy captcha in the UI
+		return ctx.path.startsWith('/captcha');
+	},
 });
