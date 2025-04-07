@@ -28,6 +28,8 @@ export const rateLimitMiddleware = rateLimit({
 	disableHeader: false,
 	whitelist: (ctx) => {
 		// don't rate limit requests to satisfy captcha in the UI
-		return ctx.path.startsWith('/captcha');
+		return (
+			ctx.path.startsWith('/captcha') || ctx.path.startsWith('/healthcheck')
+		);
 	},
 });
