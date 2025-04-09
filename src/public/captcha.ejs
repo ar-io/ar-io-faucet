@@ -77,36 +77,35 @@
   </div>
 
   <script>
-        // Theme toggle functionality
-        const themeToggle = document.getElementById('themeToggle');
-        const lightIcon = document.getElementById('lightIcon');
-        const darkIcon = document.getElementById('darkIcon');
+    // Theme toggle functionality
+    const themeToggle = document.getElementById('themeToggle');
+    const lightIcon = document.getElementById('lightIcon');
+    const darkIcon = document.getElementById('darkIcon');
 
-        // Check for saved theme preference, otherwise use system preference
-        if (localStorage.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            lightIcon.classList.remove('hidden');
-            darkIcon.classList.add('hidden');
-        } else {
+    // Check for saved theme preference, otherwise use system preference
+    if (localStorage.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        lightIcon.classList.remove('hidden');
+        darkIcon.classList.add('hidden');
+    } else {
+        document.documentElement.classList.remove('dark');
+        lightIcon.classList.add('hidden');
+        darkIcon.classList.remove('hidden');
+    }
+
+    themeToggle.addEventListener('click', function() {
+        if (document.documentElement.classList.contains('dark')) {
             document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
             lightIcon.classList.add('hidden');
             darkIcon.classList.remove('hidden');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+            lightIcon.classList.remove('hidden');
+            darkIcon.classList.add('hidden');
         }
-
-        themeToggle.addEventListener('click', function() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-                lightIcon.classList.add('hidden');
-                darkIcon.classList.remove('hidden');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-                lightIcon.classList.remove('hidden');
-                darkIcon.classList.add('hidden');
-            }
-        });
-
+    });
 
     document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -137,6 +136,20 @@
         }
         
         const data = await response.json();
+
+        // send window event for listeners to pick up
+        window?.opener?.postMessage({
+          type: 'ario-jwt-success',
+          token: data.token,
+          expiresAt: data.expiresAt
+        }, '*');
+
+        console.debug('Posted message to parent:', {
+          type: 'ario-jwt-success',
+          token: data.token,
+          expiresAt: data.expiresAt
+        });
+
         showResult(data.token);
       } catch (error) {
         showError(error.message);
