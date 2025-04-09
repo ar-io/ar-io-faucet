@@ -15,25 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import type { Context, Next } from 'koa';
-import { BadRequestError } from '../errors.js';
-import defaultLogger from '../logger.js';
-
-// globally handle errors and return proper status based on their type
-export async function errorMiddleware(ctx: Context, next: Next) {
-	const logger = ctx.state.logger || defaultLogger;
-	try {
-		await next();
-	} catch (error) {
-		logger.error('Error processing request.', {
-			error: error instanceof Error ? error.message : error,
-			stack: error instanceof Error ? error.stack : undefined,
-		});
-		if (error instanceof BadRequestError) {
-			ctx.status = 400;
-		} else {
-			ctx.status = 503;
-		}
-		ctx.body = { error: error instanceof Error ? error.message : error };
+export class BadRequestError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'BadRequestError';
 	}
 }

@@ -35,6 +35,7 @@ import rateLimit from 'koa-ratelimit';
  */
 import Router from 'koa-router';
 import * as config from './config.js';
+import { BadRequestError } from './errors.js';
 import { captcha, supportedProcesses } from './system.js';
 import {
 	AsyncClaimRequestSchema,
@@ -56,16 +57,12 @@ router.get('/api/captcha/request', async (ctx) => {
 	};
 
 	if (!processId) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process ID is required' };
-		return;
+		throw new BadRequestError('Process ID is required');
 	}
 
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process not supported.' };
-		return;
+		throw new BadRequestError('Process not supported.');
 	}
 
 	// return the URL and temporary token
@@ -82,9 +79,7 @@ router.get('/captcha', async (ctx) => {
 
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process not supported.' };
-		return;
+		throw new BadRequestError('Process not supported.');
 	}
 
 	// render the captcha page with the token
@@ -118,9 +113,7 @@ router.post(
 
 		const faucet = supportedProcesses.get(processId);
 		if (!faucet) {
-			ctx.status = 400;
-			ctx.body = { error: 'Process not supported.' };
-			return;
+			throw new BadRequestError('Process not supported.');
 		}
 
 		if (config.REQUIRE_CAPTCHA_VERIFICATION && captcha) {
@@ -130,9 +123,7 @@ router.post(
 			});
 
 			if (!captchaResult) {
-				ctx.status = 400;
-				ctx.body = { error: 'Captcha verification failed' };
-				return;
+				throw new BadRequestError('Captcha verification failed');
 			}
 		}
 
@@ -163,9 +154,7 @@ router.get('/api/token/verify', async (ctx) => {
 
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process not supported.' };
-		return;
+		throw new BadRequestError('Process not supported.');
 	}
 
 	const { valid, payload } = await faucet.verifyAuthToken({ token: authToken });
@@ -186,17 +175,13 @@ router.post('/api/claim/async', async (ctx) => {
 	// parse the request body
 	const claimRequest = AsyncClaimRequestSchema.safeParse(ctx.request.body);
 	if (!claimRequest.success) {
-		ctx.status = 400;
-		ctx.body = { error: claimRequest.error.message };
-		return;
+		throw new BadRequestError(claimRequest.error.message);
 	}
 
 	const { recipient, qty, processId } = claimRequest.data;
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process not supported.' };
-		return;
+		throw new BadRequestError('Process not supported.');
 	}
 
 	const { valid } = await faucet.verifyAuthToken({ token: authToken });
@@ -206,21 +191,19 @@ router.post('/api/claim/async', async (ctx) => {
 		return;
 	}
 
-	const { id, status, error } = await faucet.claim({
+	const { id, status } = await faucet.claim({
 		recipient,
 		qty,
 	});
 
-	ctx.body = { id, status, error };
+	ctx.body = { id, status };
 });
 
 // claim tokens to a recipient using a captcha response
 router.post('/api/claim/sync', async (ctx) => {
 	const claimRequest = ClaimRequestSchema.safeParse(ctx.request.body);
 	if (!claimRequest.success) {
-		ctx.status = 400;
-		ctx.body = { error: claimRequest.error.message };
-		return;
+		throw new BadRequestError(claimRequest.error.message);
 	}
 
 	const { recipient, qty, processId, captchaResponse } = claimRequest.data;
@@ -231,31 +214,21 @@ router.post('/api/claim/sync', async (ctx) => {
 			remoteip: ctx.ip,
 		});
 		if (!captchaResult) {
-			ctx.status = 400;
-			ctx.body = { error: 'Captcha verification failed' };
-			return;
+			throw new BadRequestError('Captcha verification failed');
 		}
 	}
 
 	const faucet = supportedProcesses.get(processId);
 	if (!faucet) {
-		ctx.status = 400;
-		ctx.body = { error: 'Process not supported.' };
-		return;
+		throw new BadRequestError('Process not supported.');
 	}
 
-	const { id, status, error } = await faucet.claim({
+	const { id, status } = await faucet.claim({
 		recipient,
 		qty,
 	});
 
-	if (error) {
-		ctx.status = 503;
-		ctx.body = { error: 'Failed to claim tokens', message: error };
-		return;
-	}
-
-	ctx.body = { id, status, error };
+	ctx.body = { id, status };
 });
 
 export default router;

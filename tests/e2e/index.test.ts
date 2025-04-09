@@ -17,7 +17,7 @@
  */
 import assert from 'node:assert';
 import { after, before, describe, it } from 'node:test';
-import { ARIO_DEVNET_PROCESS_ID } from '@ar.io/sdk';
+import { ARIO_TESTNET_PROCESS_ID } from '@ar.io/sdk';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 
 const context = process.cwd();
@@ -60,13 +60,15 @@ describe('faucet api', async () => {
 
 	it('should return a captcha url for a valid process id', async () => {
 		const response = await fetch(
-			`${apiUrl}/api/captcha/request?process-id=${ARIO_DEVNET_PROCESS_ID}`,
+			`${apiUrl}/api/captcha/request?process-id=${ARIO_TESTNET_PROCESS_ID}`,
 		);
 		assert.strictEqual(response.status, 200);
 		const data = await response.json();
-		assert.strictEqual(data.processId, ARIO_DEVNET_PROCESS_ID);
+		assert.strictEqual(data.processId, ARIO_TESTNET_PROCESS_ID);
 		assert(
-			data.captchaUrl.includes(`/captcha?process-id=${ARIO_DEVNET_PROCESS_ID}`),
+			data.captchaUrl.includes(
+				`/captcha?process-id=${ARIO_TESTNET_PROCESS_ID}`,
+			),
 		);
 	});
 
@@ -92,7 +94,7 @@ describe('faucet api', async () => {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				processId: ARIO_DEVNET_PROCESS_ID,
+				processId: ARIO_TESTNET_PROCESS_ID,
 				captchaResponse: 'some-test-captcha-response',
 			}),
 		});
@@ -102,6 +104,39 @@ describe('faucet api', async () => {
 		assert(data.token);
 		assert(data.expiresAt);
 		assert(data.expiresAt > now + 1000 * 60 * 60); // 1 hour
+	});
+
+	it('should fail claiming tokens when recipient already has significant balance', async () => {
+		const captchaResponse = await fetch(`${apiUrl}/api/captcha/verify`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				processId: ARIO_TESTNET_PROCESS_ID,
+				captchaResponse: 'some-test-captcha-response',
+			}),
+		});
+		const captchaData = await captchaResponse.json();
+		const response = await fetch(`${apiUrl}/api/claim/async`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${captchaData.token}`,
+			},
+			body: JSON.stringify({
+				processId: ARIO_TESTNET_PROCESS_ID,
+				recipient: ARIO_TESTNET_PROCESS_ID,
+				qty: 0,
+			}),
+		});
+		assert.strictEqual(response.status, 400);
+		const data = await response.json();
+		assert(
+			data.error.includes(
+				`Recipient (${ARIO_TESTNET_PROCESS_ID}) already has more than the maximum quantity of tokens allowed (${10000000000}). Please try again later.`,
+			),
+		);
 	});
 
 	// TODO: nock request to mu.ao-testnet.xyz and cu.aot-testnet.xyz and verify the transfers happen on /api/claim/sync and /api/claim/async

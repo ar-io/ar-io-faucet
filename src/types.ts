@@ -45,14 +45,14 @@ export const CaptchaRequestSchema = z.object({
 export const ClaimRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
 	recipient: z.string().min(1, 'Recipient is required'),
-	qty: z.number().min(1, 'Quantity is required'),
+	qty: z.number().min(0, 'Quantity must be greater than 0'),
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
 export const AsyncClaimRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
 	recipient: z.string().min(1, 'Recipient is required'),
-	qty: z.number().min(1, 'Quantity is required'),
+	qty: z.number().min(0, 'Quantity must be greater than 0'),
 });
 
 export type AuthTokenRequest = z.infer<typeof AuthTokenRequestSchema>;

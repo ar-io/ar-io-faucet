@@ -19,6 +19,7 @@ import type { Arweave, JWKInterface } from '@dha-team/arbundles/node';
 import { createDataItemSigner } from '@permaweb/aoconnect';
 import jwkToPem, { type JWK } from 'jwk-to-pem';
 import * as config from '../config.js';
+import { BadRequestError } from '../errors.js';
 import type { TokenCache, TokenPayload } from '../types.js';
 
 export interface TokenFaucet {
@@ -33,7 +34,6 @@ export interface TokenFaucet {
 	claim({ qty, recipient }: { qty?: number; recipient: string }): Promise<{
 		id: string;
 		status: string;
-		error?: string;
 	}>;
 }
 
@@ -175,9 +175,9 @@ export class AoTokenFaucet implements TokenFaucet {
 	}: {
 		qty?: number;
 		recipient: string;
-	}): Promise<{ id: string; status: string; error?: string }> {
+	}): Promise<{ id: string; status: string }> {
 		if (qty > this.maxQty) {
-			throw new Error(
+			throw new BadRequestError(
 				`Quantity must be less than or equal to max quantity of ${this.maxQty}`,
 			);
 		}
@@ -201,7 +201,26 @@ export class AoTokenFaucet implements TokenFaucet {
 
 		if (Number.isNaN(+issuerBalance) || +issuerBalance < qty) {
 			throw new Error(
-				'Faucet wallet has insufficient balance. Please try again later.',
+				`Faucet wallet (${await this.getIssuer()}) has insufficient balance to transfer ${qty} tokens. Please try again later.`,
+			);
+		}
+
+		// check if the recipient already has significant balance of the token
+		const recipientBalanceMsg = await this.ao.dryrun({
+			process: this.processId,
+			tags: [
+				{ name: 'Action', value: 'Balance' },
+				{ name: 'Recipient', value: recipient },
+			],
+		});
+
+		const recipientBalance = JSON.parse(
+			recipientBalanceMsg.Messages?.[0]?.Data ?? '0',
+		);
+
+		if (Number.isNaN(+recipientBalance) || +recipientBalance > this.maxQty) {
+			throw new BadRequestError(
+				`Recipient (${recipient}) already has more than the maximum quantity of tokens allowed (${this.maxQty}). Please try again later.`,
 			);
 		}
 
@@ -231,10 +250,13 @@ export class AoTokenFaucet implements TokenFaucet {
 				(t: { name: string; value: string }) => t.name === 'Error',
 			)?.value;
 
+		if (error) {
+			throw new Error(error);
+		}
+
 		return {
 			id: msgId,
-			status: error ? 'error' : 'success',
-			error: error,
+			status: 'success',
 		};
 	}
 }
