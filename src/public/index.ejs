@@ -174,7 +174,7 @@
                 });
 
                 if (!response.ok) {
-                    const body = await response.json();
+                    const body = await response.json().catch(async () => await response.text());
                     throw new Error(body.error);
                 }
 
