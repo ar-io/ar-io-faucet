@@ -45,6 +45,7 @@ export class AoTokenFaucet implements TokenFaucet {
 	private tokenDurationMs: number;
 	private processId: string;
 	private maxQty: number;
+	private minQty: number;
 	private defaultQty: number;
 	private issuer: string | undefined;
 	// biome-ignore lint/suspicious/noExplicitAny: External library typing
@@ -60,7 +61,8 @@ export class AoTokenFaucet implements TokenFaucet {
 		processId,
 		wallet,
 		tokenDurationMs = config.DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS * 1000,
-		maxQty = config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
+		maxQty = config.DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY,
+		minQty = config.DEFAULT_MIN_FAUCET_TOKEN_TRANSFER_QTY,
 		defaultQty = config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
 		ao,
 		arweave,
@@ -71,6 +73,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		processId: string;
 		wallet: JWKInterface;
 		tokenDurationMs?: number;
+		minQty?: number;
 		maxQty?: number;
 		defaultQty?: number;
 		arweave: Arweave;
@@ -84,6 +87,7 @@ export class AoTokenFaucet implements TokenFaucet {
 		this.tokenDurationMs = tokenDurationMs;
 		this.processId = processId;
 		this.maxQty = maxQty;
+		this.minQty = minQty;
 		this.defaultQty = defaultQty;
 		this.aoSigner = createDataItemSigner(this.wallet);
 		this.authTokenSigner = authTokenSigner;
@@ -118,9 +122,9 @@ export class AoTokenFaucet implements TokenFaucet {
 
 		const issuerBalance = JSON.parse(balanceMsg.Messages[0].Data);
 
-		if (Number.isNaN(+issuerBalance) || +issuerBalance < this.defaultQty) {
+		if (Number.isNaN(+issuerBalance) || +issuerBalance < this.minQty) {
 			throw new Error(
-				'Faucet wallet has insufficient balance. Please try again later.',
+				`Faucet wallet (${await this.getIssuer()}) has insufficient balance. Please try again later.`,
 			);
 		}
 

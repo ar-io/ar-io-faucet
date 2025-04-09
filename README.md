@@ -4,14 +4,17 @@ This service supports a request-based workflow for acquiring tokens on the AR.IO
 
 ## Table of Contents
 
-- [Claiming Tokens](#claiming-tokens)
-  - [Synchronous Workflow](#synchronous-workflow)
-  - [Asynchronous Workflow](#asynchronous-workflow)
-    - [Requesting an Authorization Token](#requesting-an-authorization-token)
-    - [Verifying an Authorization Token](#verifying-an-authorization-token)
+- [AR.IO Testnet Token Minting Service](#ario-testnet-token-minting-service)
+  - [Table of Contents](#table-of-contents)
+  - [Claiming Tokens](#claiming-tokens)
+    - [Synchronous Workflow](#synchronous-workflow)
+    - [Asynchronous Workflow](#asynchronous-workflow)
+      - [Requesting an Authorization Token](#requesting-an-authorization-token)
+      - [Verifying an Authorization Token](#verifying-an-authorization-token)
     - [Claiming Tokens with an Authorization Token](#claiming-tokens-with-an-authorization-token)
-- [Rate Limiting](#rate-limiting)
-- [Captcha Protection](#captcha-protection)
+  - [Rate Limiting](#rate-limiting)
+  - [Captcha Protection](#captcha-protection)
+  - [Environment Variables](#environment-variables)
 
 ## Claiming Tokens
 
@@ -23,7 +26,7 @@ sequenceDiagram
     participant Backend
     participant Token
 
-    Client/User->>Backend: Send token request with captcha
+    Client/User->>Backend: Send token request with captcha response
     Backend->>Backend: Rate limit check
     Backend-->>Client/User: Return 429 if rate limited
     Backend->>Backend: Captcha verification
@@ -55,17 +58,18 @@ sequenceDiagram
     participant Token Contract
 
     Note over Client/User,Token Contract: Authorization Flow
-    Client/User->>Backend: Request auth token
-    Backend->>Backend: Rate limit check
-    Backend-->>Client/User: Return 429 if rate limited
+    Client/User->>Backend: Request captcha URL
     Backend-->>Client/User: Return captcha URL
 
     Client/User->>Backend: Solve captcha
+    Backend->>Backend: Rate limit check
+    Backend-->>Client/User: Return 429 if rate limited
     Backend->>Backend: Verify captcha
     Backend-->>Client/User: Return auth token
 
     Note over Client/User,Token Contract: Async claim Flow
-    Client/User->>Backend: Submit auth token with recipient address and quantity
+    Client/User->>Backend: Send claim request with auth token, recipient address, and quantity
+    Backend->>Backend: Rate limit check
     Backend->>Backend: Verify auth token
     Backend->>Backend: Verify faucet balance
     Backend->>Token Contract: Send transfer notice to recipient
@@ -76,17 +80,16 @@ sequenceDiagram
 
 #### Requesting an Authorization Token
 
-Users can request a captcha URL by sending a GET request to the `/api/token/request` endpoint with the `process-id` in the query parameters.
+Users can request a captcha URL by sending a GET request to the `/api/captcha/request` endpoint with the `process-id` in the query parameters.
 
 ```bash
-curl -X GET http://localhost:3000/api/token/request?process-id=<processId>
+curl -X GET http://localhost:3000/api/captcha/request?process-id=<processId>
 ```
 
 The response will be a JSON object with the following properties:
 
 - `processId`: The processId of the process that is requesting the token.
 - `captchaUrl`: The URL for the captcha. This URL will redirect to the front-end where the user can solve the captcha and then return to the back-end with the token.
-
 
 #### Verifying an Authorization Token
 
@@ -121,7 +124,6 @@ The service includes various rate limiting mechanisms to prevent abuse, defaulti
 
 The service includes a [hCaptcha](https://hcaptcha.com/) protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be claimed. This can be disabled by setting the `DISABLE_CAPTCHA_VERIFICATION` environment variable to `true`.
 
-
 ## Environment Variables
 
 The service supports the following environment variables:
@@ -137,6 +139,9 @@ The service supports the following environment variables:
 - `REQUIRE_CAPTCHA_VERIFICATION`: Whether captcha verification is required, defaults to `true`.
 - `ENABLE_SELF_HOSTED_FRONTEND`: Whether the self-hosted front-end is enabled, defaults to `true`.
 - `WALLET_FILE`: The path to the wallet file. This wallet is must have sufficient balance of requested tokens.
+- `DEFAULT_FAUCET_TOKEN_TRANSFER_QTY`: The default quantity of tokens to transfer when claiming tokens.
+- `DEFAULT_MIN_FAUCET_TOKEN_TRANSFER_QTY`: The minimum quantity of tokens to transfer when claiming tokens.
+- `DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY`: The maximum quantity of tokens to transfer when claiming tokens.
 - `PORT`: The port for the service to run on
 - `LOG_LEVEL`: The log level for the service.
 - `LOG_FORMAT`: The log format for the service.

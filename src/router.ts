@@ -50,7 +50,7 @@ router.get('/healthcheck', async (ctx) => {
 });
 
 // route to request auth URL for satisfying captcha
-router.get('/api/token/request', async (ctx) => {
+router.get('/api/captcha/request', async (ctx) => {
 	const { 'process-id': processId } = ctx.query as {
 		'process-id': string;
 	};
@@ -58,6 +58,13 @@ router.get('/api/token/request', async (ctx) => {
 	if (!processId) {
 		ctx.status = 400;
 		ctx.body = { error: 'Process ID is required' };
+		return;
+	}
+
+	const faucet = supportedProcesses.get(processId);
+	if (!faucet) {
+		ctx.status = 400;
+		ctx.body = { error: 'Process not supported.' };
 		return;
 	}
 
