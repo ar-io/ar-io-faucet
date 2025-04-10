@@ -131,7 +131,10 @@
         });
         
         if (!response.ok) {
-          const body = await response.json().catch(async () => await response.text());
+          const body = await response.json().catch(async () => {
+            const body = await response.text();
+            return { error: body };
+          });
           throw new Error(body.error);
         }
         

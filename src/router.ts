@@ -148,8 +148,8 @@ router.get('/api/token/verify', async (ctx) => {
 
 	const authToken = authorization.split(' ')[1];
 
-	const { processId } = ctx.query as {
-		processId: string;
+	const { 'process-id': processId } = ctx.query as {
+		'process-id': string;
 	};
 
 	const faucet = supportedProcesses.get(processId);
