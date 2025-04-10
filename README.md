@@ -1,15 +1,16 @@
-# AR.IO Testnet Token Minting Service
+# 🚰 AR.IO Faucet Service
 
-This service supports a request-based workflow for acquiring tokens on the AR.IO Testnet Network.
+This service supports a request-based workflow for acquiring tokens on the AR.IO Testnet Network (tARIO).
 
 ## Table of Contents
 
-- [AR.IO Testnet Token Minting Service](#ario-testnet-token-minting-service)
+- [AR.IO Faucet Service](#ario-faucet-service)
   - [Table of Contents](#table-of-contents)
   - [Claiming Tokens](#claiming-tokens)
     - [Synchronous Workflow](#synchronous-workflow)
     - [Asynchronous Workflow](#asynchronous-workflow)
-      - [Requesting an Authorization Token](#requesting-an-authorization-token)
+      - [Requesting a Captcha URL](#requesting-a-captcha-url)
+      - [Generating an Authorization Token](#generating-an-authorization-token)
       - [Verifying an Authorization Token](#verifying-an-authorization-token)
     - [Claiming Tokens with an Authorization Token](#claiming-tokens-with-an-authorization-token)
   - [Rate Limiting](#rate-limiting)
