@@ -51,7 +51,7 @@ router.get('/healthcheck', async (ctx) => {
 });
 
 // route to request auth URL for satisfying captcha
-router.get('/api/captcha/request', async (ctx) => {
+router.get('/api/captcha/url', async (ctx) => {
 	const { 'process-id': processId } = ctx.query as {
 		'process-id': string;
 	};

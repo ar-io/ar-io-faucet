@@ -78,18 +78,32 @@ sequenceDiagram
     Backend-->>Client/User: Return transfer message id
 ```
 
-#### Requesting an Authorization Token
+#### Requesting a Captcha URL
 
-Users can request a captcha URL by sending a GET request to the `/api/captcha/request` endpoint with the `process-id` in the query parameters.
+Users can request a captcha URL by sending a GET request to the `/api/captcha/url` endpoint with the `process-id` in the query parameters.
 
 ```bash
-curl -X GET http://localhost:3000/api/captcha/request?process-id=<processId>
+curl -X GET http://localhost:3000/api/captcha/url?process-id=<processId>
 ```
 
 The response will be a JSON object with the following properties:
 
 - `processId`: The processId of the process that is requesting the token.
 - `captchaUrl`: The URL for the captcha. This URL will redirect to the front-end where the user can solve the captcha and then return to the back-end with the token.
+
+#### Generating an Authorization Token
+
+Users can generate an authorization token by sending a POST request to the `/api/captcha/verify` endpoint with the `processId` and `captchaResponse` in the body.
+
+```bash
+curl -X POST http://localhost:3000/api/captcha/verify -H "Content-Type: application/json" -d '{"processId": "<processId>", "captchaResponse": "<captcha-response>"}'
+```
+
+The response will be a JSON object with the following properties:
+
+- `status`: The status of the captcha verification.
+- `token`: The auth token that can be used to claim tokens.
+- `expiresAt`: The timestamp when the token will expire.
 
 #### Verifying an Authorization Token
 

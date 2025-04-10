@@ -52,15 +52,13 @@ describe('faucet api', async () => {
 	});
 
 	it('should return an error when process id is not valid', async () => {
-		const response = await fetch(
-			`${apiUrl}/api/captcha/request?process-id=test`,
-		);
+		const response = await fetch(`${apiUrl}/api/captcha/url?process-id=test`);
 		assert.strictEqual(response.status, 400);
 	});
 
 	it('should return a captcha url for a valid process id', async () => {
 		const response = await fetch(
-			`${apiUrl}/api/captcha/request?process-id=${ARIO_TESTNET_PROCESS_ID}`,
+			`${apiUrl}/api/captcha/url?process-id=${ARIO_TESTNET_PROCESS_ID}`,
 		);
 		assert.strictEqual(response.status, 200);
 		const data = await response.json();
