@@ -106,6 +106,36 @@ describe('faucet api', async () => {
 		assert(data.expiresAt > now + 1000 * 60 * 60); // 1 hour
 	});
 
+	it('should return valid when auth token is verified', async () => {
+		const now = Date.now();
+		const response = await fetch(`${apiUrl}/api/captcha/verify`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				processId: ARIO_TESTNET_PROCESS_ID,
+				captchaResponse: 'some-test-captcha-response',
+			}),
+		});
+		assert.strictEqual(response.status, 200);
+		const data = await response.json();
+		const verifyResponse = await fetch(
+			`${apiUrl}/api/token/verify?process-id=${ARIO_TESTNET_PROCESS_ID}`,
+			{
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${data.token}`,
+				},
+			},
+		);
+		assert.strictEqual(verifyResponse.status, 200);
+		const verifyData = await verifyResponse.json();
+		assert(verifyData.valid);
+		assert(verifyData.expiresAt);
+		assert(verifyData.expiresAt > now + 1000 * 60 * 60); // 1 hour
+	});
+
 	it('should fail claiming tokens when recipient already has significant balance', async () => {
 		const captchaResponse = await fetch(`${apiUrl}/api/captcha/verify`, {
 			method: 'POST',
