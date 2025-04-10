@@ -174,10 +174,7 @@
                 });
 
                 if (!response.ok) {
-                    const body = await response.json().catch(async () => {
-                        const body = await response.text();
-                        return { error: body };
-                    });
+                    const body = await response.json().catch(() => { error: response.statusText });
                     throw new Error(body.error);
                 }
 
