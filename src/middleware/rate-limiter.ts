@@ -22,7 +22,8 @@ import * as config from '../config.js';
 export const rateLimitMiddleware = rateLimit({
 	driver: 'memory',
 	db: new Map(),
-	id: (ctx) => ctx.ip,
+	// use the first IP address in the X-Forwarded-For header, or the IP address of the request
+	id: (ctx) => ctx.headers['x-forwarded-for']?.[0] || ctx.ip,
 	duration: config.GLOBAL_RATE_LIMIT_WINDOW_SECONDS * 1000,
 	max: config.GLOBAL_RATE_LIMIT_THRESHOLD,
 	disableHeader: false,
