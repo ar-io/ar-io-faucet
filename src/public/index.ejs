@@ -41,13 +41,13 @@
 
         <header class="mb-8">
             <h1 class="text-3xl font-bold text-center text-black dark:text-white">AR.IO Testnet Faucet</h1>
-            <p class="text-center max-w-md mx-auto text-gray-600 dark:text-gray-400 mt-2">Request tokens for the AR.IO Testnet. Restrictions apply. Refer to <a href="https://docs.ar.io" class="underline hover:text-gray-900 dark:hover:text-gray-100">docs.ar.io</a> for more information.</p>
+            <p class="text-center max-w-md mx-auto text-gray-600 dark:text-gray-400 mt-2">Request tokens for the AR.IO Testnet. Restrictions apply. Refer to <a href="https://docs.ar.io/guides/testnet" class="underline hover:text-gray-900 dark:hover:text-gray-100">docs.ar.io</a> for more information.</p>
         </header>
 
         <main class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
             <form id="tokenRequestForm" class="space-y-4">
                 <div>
-                    <label for="recipient" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wallet Address</label>
+                    <label for="recipient" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wallet Address (Supports Arweave/AO and EVM Addresses)</label>
                     <input type="text" id="recipient" name="recipient" required minlength="26" maxlength="64" pattern="^\S*$" 
                         title="Wallet address must be between 26-64 characters with no spaces"
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
