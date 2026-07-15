@@ -49,6 +49,46 @@ export const WALLET = WALLET_FILE
 	? fs.readFileSync(WALLET_FILE, 'utf8')
 	: process.env.WALLET;
 
+// solana config
+export const SOLANA_RPC_URL =
+	process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+export const SOLANA_TOKEN_MINT = process.env.SOLANA_TOKEN_MINT;
+export const SOLANA_FAUCET_SECRET_KEY_FILE =
+	process.env.SOLANA_FAUCET_SECRET_KEY_FILE;
+export const SOLANA_FAUCET_SECRET_KEY = SOLANA_FAUCET_SECRET_KEY_FILE
+	? fs.readFileSync(SOLANA_FAUCET_SECRET_KEY_FILE, 'utf8').trim()
+	: process.env.SOLANA_FAUCET_SECRET_KEY;
+export const SOLANA_TOKEN_ID = process.env.SOLANA_TOKEN_ID || 'solana-devnet';
+export const SOLANA_TOKEN_DECIMALS = process.env.SOLANA_TOKEN_DECIMALS
+	? +process.env.SOLANA_TOKEN_DECIMALS
+	: undefined;
+export const SOLANA_COMMITMENT = process.env.SOLANA_COMMITMENT || 'confirmed';
+
+// auth token signing config (HS256 service JWT)
+export const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET;
+
+// github oauth config
+export const GITHUB_OAUTH_ENABLED =
+	process.env.GITHUB_OAUTH_ENABLED !== 'false';
+export const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+export const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+export const GITHUB_OAUTH_CALLBACK_URL =
+	process.env.GITHUB_OAUTH_CALLBACK_URL;
+export const GITHUB_MIN_ACCOUNT_AGE_DAYS = +(
+	process.env.GITHUB_MIN_ACCOUNT_AGE_DAYS || 30
+);
+export const GITHUB_OAUTH_STATE_TTL_SECONDS = +(
+	process.env.GITHUB_OAUTH_STATE_TTL_SECONDS || 600
+);
+export const GITHUB_API_BASE_URL =
+	process.env.GITHUB_API_BASE_URL || 'https://api.github.com';
+export const GITHUB_OAUTH_AUTHORIZE_URL =
+	process.env.GITHUB_OAUTH_AUTHORIZE_URL ||
+	'https://github.com/login/oauth/authorize';
+export const GITHUB_OAUTH_TOKEN_URL =
+	process.env.GITHUB_OAUTH_TOKEN_URL ||
+	'https://github.com/login/oauth/access_token';
+
 // logging config
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 export const LOG_FORMAT = process.env.LOG_FORMAT || 'json';
@@ -73,3 +113,35 @@ export const REQUIRE_CAPTCHA_VERIFICATION =
 export const CAPTCHA_SITE_VERIFY_URL = process.env.CAPTCHA_SITE_VERIFY_URL;
 export const CAPTCHA_SITE_KEY = process.env.CAPTCHA_SITE_KEY;
 export const CAPTCHA_SECRET_KEY = process.env.CAPTCHA_SECRET_KEY;
+
+// startup validation for required Solana + GitHub vars
+export function assertRequiredConfig(): void {
+	const missing: string[] = [];
+
+	if (!SOLANA_TOKEN_MINT) {
+		missing.push('SOLANA_TOKEN_MINT');
+	}
+	if (!SOLANA_FAUCET_SECRET_KEY) {
+		missing.push('SOLANA_FAUCET_SECRET_KEY (or SOLANA_FAUCET_SECRET_KEY_FILE)');
+	}
+	if (!AUTH_TOKEN_SECRET) {
+		missing.push('AUTH_TOKEN_SECRET');
+	}
+	if (GITHUB_OAUTH_ENABLED) {
+		if (!GITHUB_CLIENT_ID) {
+			missing.push('GITHUB_CLIENT_ID');
+		}
+		if (!GITHUB_CLIENT_SECRET) {
+			missing.push('GITHUB_CLIENT_SECRET');
+		}
+		if (!GITHUB_OAUTH_CALLBACK_URL) {
+			missing.push('GITHUB_OAUTH_CALLBACK_URL');
+		}
+	}
+
+	if (missing.length > 0) {
+		throw new Error(
+			`Missing required environment variables: ${missing.join(', ')}`,
+		);
+	}
+}

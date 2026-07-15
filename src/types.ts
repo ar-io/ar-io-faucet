@@ -19,10 +19,16 @@ import { z } from 'zod';
 
 export interface TokenPayload {
 	issuer: string;
+	// `processId` is retained for request/response compatibility; for the Solana
+	// build it carries the faucet `tokenId` (SOLANA_TOKEN_ID) instead of an AO id.
 	processId: string;
 	iat: number;
 	exp: number;
 	nonce: string;
+	// GitHub-bound claim credentials (optional for back-compat)
+	githubId?: number | string;
+	githubLogin?: string;
+	githubAccountCreatedAt?: string;
 }
 
 export interface TokenCache {
@@ -32,6 +38,47 @@ export interface TokenCache {
 	clear(): Promise<void>;
 	size(): Promise<number>;
 }
+
+// Shared faucet contract implemented by the (Solana) token faucet. Kept here so
+// system.ts and router.ts depend on the interface rather than a concrete faucet.
+export interface TokenFaucet {
+	requestAuthToken(): Promise<{
+		token: string;
+		expiresAt: number;
+	}>;
+	requestAuthTokenForGithub(params: {
+		githubId: number | string;
+		githubLogin: string;
+		githubAccountCreatedAt: string;
+	}): Promise<{
+		token: string;
+		expiresAt: number;
+	}>;
+	verifyAuthToken({ token }: { token: string }): Promise<{
+		valid: boolean;
+		payload: TokenPayload;
+	}>;
+	claim(params: {
+		qty?: number;
+		recipient: string;
+		githubId?: number | string;
+	}): Promise<{
+		id: string;
+		status: string;
+	}>;
+}
+
+// A Solana address is base58 and, when decoded, 32 bytes. Length in base58
+// characters is 32..44. Actual on-curve validity is enforced at claim time via
+// `new PublicKey(recipient)`.
+const SolanaAddressSchema = z
+	.string()
+	.min(32, 'Recipient must be a valid Solana address')
+	.max(44, 'Recipient must be a valid Solana address')
+	.regex(
+		/^[1-9A-HJ-NP-Za-km-z]+$/,
+		'Recipient must be a valid base58 Solana address',
+	);
 
 export const AuthTokenRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
@@ -44,14 +91,14 @@ export const CaptchaRequestSchema = z.object({
 
 export const ClaimRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
-	recipient: z.string().min(1, 'Recipient is required'),
+	recipient: SolanaAddressSchema,
 	qty: z.number().min(0, 'Quantity must be greater than 0'),
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
 export const AsyncClaimRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
-	recipient: z.string().min(1, 'Recipient is required'),
+	recipient: SolanaAddressSchema,
 	qty: z.number().min(0, 'Quantity must be greater than 0'),
 });
 

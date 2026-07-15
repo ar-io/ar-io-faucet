@@ -47,6 +47,8 @@ if (config.ENABLE_SELF_HOSTED_FRONTEND) {
 		await ctx.render('index', {
 			captchaSiteKey: config.CAPTCHA_SITE_KEY,
 			baseUrl: '',
+			tokenId: config.SOLANA_TOKEN_ID,
+			githubOAuthEnabled: config.GITHUB_OAUTH_ENABLED,
 		});
 	});
 	app.use(frontendRouter.routes());
