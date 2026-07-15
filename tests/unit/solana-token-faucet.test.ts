@@ -92,6 +92,13 @@ function makeCache(): TokenCache & { store: Map<string, TokenPayload> } {
 		async set(nonce, token) {
 			store.set(nonce, token);
 		},
+		reserve(nonce, token) {
+			if (store.has(nonce)) {
+				return false;
+			}
+			store.set(nonce, token);
+			return true;
+		},
 		async delete(nonce) {
 			store.delete(nonce);
 		},
@@ -435,8 +442,8 @@ describe('SolanaTokenFaucet.claim (SPL transfer)', () => {
 	});
 });
 
-describe('SolanaTokenFaucet nonce single-use (consumeNonce)', () => {
-	it('records the nonce so verifyAuthToken later sees it as replayed', async () => {
+describe('SolanaTokenFaucet nonce single-use (reserveNonce)', () => {
+	it('reserves the nonce so verifyAuthToken later sees it as replayed', async () => {
 		const faucetKeypair = Keypair.generate();
 		const mint = Keypair.generate().publicKey;
 		const cache = makeCache();
@@ -466,7 +473,10 @@ describe('SolanaTokenFaucet nonce single-use (consumeNonce)', () => {
 		};
 
 		assert.strictEqual(await cache.get('nonce-abc'), null);
-		await faucet.consumeNonce(payload);
+		// first reservation wins
+		assert.strictEqual(faucet.reserveNonce(payload), true);
 		assert.notStrictEqual(await cache.get('nonce-abc'), null);
+		// a concurrent/replayed reservation of the same nonce is rejected
+		assert.strictEqual(faucet.reserveNonce(payload), false);
 	});
 });

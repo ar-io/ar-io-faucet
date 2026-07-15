@@ -75,10 +75,13 @@ afterEach(() => {
 });
 
 describe('NodeStateStore (CSRF/state)', () => {
-	it('consume() returns the bound payload exactly once (single-use)', () => {
+	it('consume() returns the bound value exactly once (single-use)', () => {
 		const store = new NodeStateStore({ ttlSeconds: 600 });
-		const state = store.generateState('solana-devnet');
-		assert.strictEqual(store.consume(state), 'solana-devnet');
+		const state = store.generateState({ processId: 'solana-devnet', sid: 's1' });
+		assert.deepStrictEqual(store.consume(state), {
+			processId: 'solana-devnet',
+			sid: 's1',
+		});
 		// replaying the same state is rejected
 		assert.strictEqual(store.consume(state), null);
 	});
@@ -88,15 +91,15 @@ describe('NodeStateStore (CSRF/state)', () => {
 		assert.strictEqual(store.consume('forged-state-value'), null);
 	});
 
-	it('generateState defaults payload to "true" when none provided', () => {
+	it('binds the initiating session id into the state value', () => {
 		const store = new NodeStateStore({ ttlSeconds: 600 });
-		const state = store.generateState();
-		assert.strictEqual(store.consume(state), 'true');
+		const state = store.generateState({ processId: 'solana-devnet', sid: 'sid-xyz' });
+		assert.strictEqual(store.consume(state)?.sid, 'sid-xyz');
 	});
 
 	it('rejects a state that has expired (TTL elapsed)', () => {
 		const store = new NodeStateStore({ ttlSeconds: 1 });
-		const state = store.generateState('solana-devnet');
+		const state = store.generateState({ processId: 'solana-devnet', sid: 's1' });
 		// force-expire by reaching into the underlying cache TTL
 		// biome-ignore lint/suspicious/noExplicitAny: access private cache for TTL manipulation
 		const cache = (store as any).cache;
@@ -263,8 +266,11 @@ describe('GitHub OAuth gate end-to-end (units composed, GitHub API mocked)', () 
 		const claimStore = new GithubClaimStore({ ttlSeconds: 3600 });
 		const client = makeClient();
 
-		// begin flow: bind processId into state
-		const state = stateStore.generateState('solana-devnet');
+		// begin flow: bind processId + session id into state
+		const state = stateStore.generateState({
+			processId: 'solana-devnet',
+			sid: 'sid-1',
+		});
 
 		// mocked GitHub API: token exchange then user lookup
 		stubFetch([
@@ -280,8 +286,8 @@ describe('GitHub OAuth gate end-to-end (units composed, GitHub API mocked)', () 
 		]);
 
 		// callback: consume state (CSRF)
-		const processId = stateStore.consume(state);
-		assert.strictEqual(processId, 'solana-devnet');
+		const stateValue = stateStore.consume(state);
+		assert.strictEqual(stateValue?.processId, 'solana-devnet');
 
 		const accessToken = await client.exchangeCode('code-xyz');
 		const user = await client.fetchUser(accessToken);
@@ -299,8 +305,11 @@ describe('GitHub OAuth gate end-to-end (units composed, GitHub API mocked)', () 
 		const stateStore = new NodeStateStore({ ttlSeconds: 600 });
 		const fetchFn = stubFetch([() => ({ status: 200, body: {} })]);
 
-		const state = stateStore.generateState('solana-devnet');
-		assert.strictEqual(stateStore.consume(state), 'solana-devnet');
+		const state = stateStore.generateState({
+			processId: 'solana-devnet',
+			sid: 'sid-1',
+		});
+		assert.strictEqual(stateStore.consume(state)?.processId, 'solana-devnet');
 		// forged replay
 		assert.strictEqual(stateStore.consume(state), null);
 		// no GitHub API traffic happened for the replay path

@@ -37,6 +37,12 @@ const __dirname = path.dirname(__filename);
 
 const app = new Koa();
 
+// Only trust X-Forwarded-For (and derive ctx.ip / ctx.request.secure from it)
+// when explicitly running behind a known reverse proxy. Otherwise Koa ignores
+// the header and ctx.ip is the real socket address, so a client can't spoof its
+// source IP to bypass rate limits or hCaptcha's remoteip check.
+app.proxy = config.TRUST_PROXY;
+
 // static files are not rate limited or logged
 app.use(cors());
 

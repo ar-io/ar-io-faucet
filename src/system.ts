@@ -60,7 +60,6 @@ export const supportedProcesses = new Map<string, TokenFaucet>([
 		config.SOLANA_TOKEN_ID,
 		new SolanaTokenFaucet({
 			cache: new NodeTokenCache({
-				maxSize: config.DEFAULT_FAUCET_TOKEN_CACHE_SIZE,
 				ttlSeconds: config.DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS,
 			}),
 			connection,

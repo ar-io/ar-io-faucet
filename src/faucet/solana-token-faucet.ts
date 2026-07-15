@@ -52,6 +52,9 @@ export class SolanaTokenFaucet implements TokenFaucet {
 	private readonly defaultQty: number;
 
 	private readonly issuer: string;
+	// JWT audience claim. Scopes the claim token to this faucet's process/token
+	// id so a token minted for one faucet can't be replayed against another.
+	private readonly audience: string;
 
 	constructor({
 		cache,
@@ -97,6 +100,12 @@ export class SolanaTokenFaucet implements TokenFaucet {
 		this.minQty = minQty;
 		this.defaultQty = defaultQty;
 		this.issuer = this.faucetKeypair.publicKey.toBase58();
+		this.audience = this.tokenId;
+	}
+
+	// Token lifetime in whole seconds (jsonwebtoken expects seconds).
+	private tokenDurationSeconds(): number {
+		return Math.floor(this.tokenDurationMs / 1000);
 	}
 
 	private generateNonce(): string {
@@ -132,10 +141,16 @@ export class SolanaTokenFaucet implements TokenFaucet {
 		token: string;
 		expiresAt: number;
 	} {
+		// jsonwebtoken works in SECONDS. iat/exp on the payload are already stored
+		// in seconds (see requestAuthToken*). We pass iss/aud explicitly and let
+		// the library manage iat/exp via the claims present on the payload so its
+		// built-in expiry (jwt.verify) actually fires.
 		const token = this.authTokenSigner.sign(payload, this.authTokenSecret, {
 			algorithm: 'HS256',
+			issuer: this.issuer,
+			audience: this.audience,
 		});
-		return { token, expiresAt: +payload.exp };
+		return { token, expiresAt: payload.exp };
 	}
 
 	async requestAuthToken(): Promise<{ token: string; expiresAt: number }> {
@@ -147,11 +162,13 @@ export class SolanaTokenFaucet implements TokenFaucet {
 			);
 		}
 
+		// iat/exp in SECONDS (jsonwebtoken unit) so library-side expiry works.
+		const nowSeconds = Math.floor(Date.now() / 1000);
 		const payload: TokenPayload = {
 			issuer: this.issuer,
 			processId: this.tokenId,
-			iat: Date.now(),
-			exp: Date.now() + this.tokenDurationMs,
+			iat: nowSeconds,
+			exp: nowSeconds + this.tokenDurationSeconds(),
 			nonce: this.generateNonce(),
 		};
 
@@ -162,10 +179,12 @@ export class SolanaTokenFaucet implements TokenFaucet {
 		githubId,
 		githubLogin,
 		githubAccountCreatedAt,
+		sid,
 	}: {
 		githubId: number | string;
 		githubLogin: string;
 		githubAccountCreatedAt: string;
+		sid?: string;
 	}): Promise<{ token: string; expiresAt: number }> {
 		const balance = await this.getFaucetBalance();
 		if (balance < BigInt(this.minQty)) {
@@ -174,12 +193,15 @@ export class SolanaTokenFaucet implements TokenFaucet {
 			);
 		}
 
+		// iat/exp in SECONDS (jsonwebtoken unit) so library-side expiry works.
+		const nowSeconds = Math.floor(Date.now() / 1000);
 		const payload: TokenPayload = {
 			issuer: this.issuer,
 			processId: this.tokenId,
-			iat: Date.now(),
-			exp: Date.now() + this.tokenDurationMs,
+			iat: nowSeconds,
+			exp: nowSeconds + this.tokenDurationSeconds(),
 			nonce: this.generateNonce(),
+			sid,
 			githubId,
 			githubLogin,
 			githubAccountCreatedAt,
@@ -192,12 +214,19 @@ export class SolanaTokenFaucet implements TokenFaucet {
 		valid: boolean;
 		payload: TokenPayload;
 	}> {
+		// jwt.verify enforces exp (now that iat/exp are in seconds) and validates
+		// the iss/aud claims; it throws on failure. verifyAuthTokenSafe() in the
+		// router catches that and reports valid=false.
 		const payload = this.authTokenSigner.verify(token, this.authTokenSecret, {
 			algorithms: ['HS256'],
+			issuer: this.issuer,
+			audience: this.audience,
 		}) as TokenPayload;
 
 		const isCorrectIssuer = payload.issuer === this.issuer;
-		const isExpired = payload.exp < Date.now();
+		// Manual expiry check kept as defense-in-depth, in the SAME unit (seconds)
+		// as the signed claim.
+		const isExpired = payload.exp < Math.floor(Date.now() / 1000);
 		const isInCache = await this.cache.get(payload.nonce);
 		const hasGithubId =
 			payload.githubId !== undefined &&
@@ -229,6 +258,12 @@ export class SolanaTokenFaucet implements TokenFaucet {
 		// 2. qty bounds check
 		if (!Number.isInteger(qty) || qty <= 0) {
 			throw new BadRequestError('Quantity must be a positive integer');
+		}
+		// enforce the documented per-claim floor (minQty)
+		if (qty < this.minQty) {
+			throw new BadRequestError(
+				`Quantity must be greater than or equal to min quantity of ${this.minQty}`,
+			);
 		}
 		if (qty > this.maxQty) {
 			throw new BadRequestError(
@@ -323,9 +358,19 @@ export class SolanaTokenFaucet implements TokenFaucet {
 		return { id: signature, status: 'success' };
 	}
 
-	// Cache a token's nonce so the same JWT cannot be replayed for a second
-	// claim (single-use enforcement).
-	async consumeNonce(payload: TokenPayload): Promise<void> {
-		await this.cache.set(payload.nonce, payload);
+	// Atomically RESERVE a token's nonce BEFORE dispatching the transfer, so the
+	// same JWT cannot be replayed by concurrent claims (single-use enforcement).
+	// This is the load-bearing anti-replay primitive: the underlying
+	// cache.reserve() does has()+set() in one synchronous critical section with
+	// no await in between, so of N concurrent claims sharing a nonce exactly one
+	// wins. Returns true if reserved, false if the nonce was already burned.
+	reserveNonce(payload: TokenPayload): boolean {
+		return this.cache.reserve(payload.nonce, payload);
+	}
+
+	// Roll back a nonce reservation. Only call on a DEFINITIVE transfer failure so
+	// a legitimate user can retry with the same token before it expires.
+	async releaseNonce(payload: TokenPayload): Promise<void> {
+		await this.cache.delete(payload.nonce);
 	}
 }

@@ -24,6 +24,11 @@ export const PORT = +(process.env.PORT || 3000);
 export const DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS = +(
 	(process.env.DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS || 3600) // 1 hour
 );
+// DEPRECATED / unused. The nonce cache is no longer bounded by a max key count:
+// a bounded NodeCache THROWS on the overflowing set(), which could leave a
+// consumed nonce unrecorded after a successful transfer and enable replay.
+// In-flight nonces are naturally bounded by the token TTL instead. Retained only
+// to avoid breaking any deployment that still sets this env var.
 export const DEFAULT_FAUCET_TOKEN_CACHE_SIZE = +(
 	(process.env.DEFAULT_FAUCET_TOKEN_CACHE_SIZE || 100) // 100 tokens
 );
@@ -88,6 +93,21 @@ export const GITHUB_OAUTH_AUTHORIZE_URL =
 export const GITHUB_OAUTH_TOKEN_URL =
 	process.env.GITHUB_OAUTH_TOKEN_URL ||
 	'https://github.com/login/oauth/access_token';
+
+// session / cookie config for the browser claim flow. The claim JWT is
+// delivered to the browser via an HttpOnly cookie (not a URL fragment) so it
+// does not leak through history / Referer / logs, and is bound to the session
+// that initiated the OAuth flow.
+export const CLAIM_TOKEN_COOKIE = 'faucet_claim_token';
+export const SESSION_COOKIE = 'faucet_sid';
+// Secure flag on cookies. Defaults on; set COOKIE_SECURE=false only for local
+// plain-HTTP development.
+export const COOKIE_SECURE = process.env.COOKIE_SECURE !== 'false';
+
+// proxy trust. Koa only honours X-Forwarded-For when app.proxy is true. Enable
+// this ONLY when the faucet sits behind a known, trusted reverse proxy that sets
+// the header, otherwise clients can spoof their source IP and bypass rate limits.
+export const TRUST_PROXY = process.env.TRUST_PROXY === 'true';
 
 // logging config
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';

@@ -139,9 +139,42 @@ The service includes various rate limiting mechanisms to prevent abuse, defaulti
 
 The service includes a [hCaptcha](https://hcaptcha.com/) protection mechanism to prevent abuse. By default, the service will require a captcha to be solved before a token can be claimed. This can be disabled by setting the `DISABLE_CAPTCHA_VERIFICATION` environment variable to `true`.
 
+## Security Model & Single-Instance Limitation
+
+Anti-replay and anti-sybil state (consumed token nonces and the per-GitHub-id
+claim window) are held in-process, in memory. The concurrent-replay drain — where
+N simultaneous requests carrying the same JWT could all pass the check and all
+transfer — is closed by an **atomic reserve-before-transfer**: the nonce (and,
+at the OAuth callback, the per-GitHub-id slot) is reserved with a synchronous
+set-if-absent (`has()`+`set()` in one critical section, no `await` in between)
+**before** the on-chain transfer is dispatched. Of N concurrent claims sharing a
+token, exactly one wins the reservation; the rest are rejected before any tokens
+move. Reservations roll back only on a definitive transfer failure.
+
+**Accepted limitation (single-box devnet target):** because this state is
+per-process, it resets on restart and is NOT shared across replicas. Running
+multiple instances behind a load balancer would let the same JWT/GitHub id claim
+once per replica, and a restart clears the window early. This is acceptable for
+the intended single-instance devnet faucet. A durable, shared store
+(SQLite/Redis) is intentionally deferred; see the `TODO` markers in
+`src/cache/token-cache.ts`. Do not run more than one replica without adding one.
+
+The browser claim flow delivers the claim JWT via an **HttpOnly + Secure +
+SameSite=Lax cookie** scoped to `/api` (not a URL fragment), bound to the session
+that initiated the OAuth flow (a session id is carried in the OAuth `state` and
+embedded in the JWT, then matched against the `faucet_sid` cookie at claim time).
+
+When running behind a reverse proxy, set `TRUST_PROXY=true` so `X-Forwarded-For`
+is honored (via `ctx.ip`) for rate limiting and hCaptcha. When it is unset the
+header is ignored and the socket address is used, so clients cannot spoof their
+source IP to bypass rate limits.
+
 ## Environment Variables
 
 The service supports the following environment variables:
+
+- `TRUST_PROXY`: Set to `true` only when running behind a known reverse proxy so `X-Forwarded-For` is trusted; otherwise the header is ignored (default: `false`).
+- `COOKIE_SECURE`: Whether the session/claim cookies carry the `Secure` flag. Defaults to `true`; set to `false` only for local plain-HTTP development.
 
 - `GLOBAL_RATE_LIMIT_WINDOW_SECONDS`: The global rate limit window in seconds (e.g. 1 hour)
 - `GLOBAL_RATE_LIMIT_THRESHOLD`: The global rate limit threshold (e.g. 100 requests per window)

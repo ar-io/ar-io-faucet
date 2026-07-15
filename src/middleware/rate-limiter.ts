@@ -18,12 +18,34 @@
 import rateLimit from 'koa-ratelimit';
 import * as config from '../config.js';
 
+// Resolve the client identity for rate limiting.
+//
+// SECURITY: never key on the FIRST CHARACTER of X-Forwarded-For (the previous
+// `xff?.[0]` bug indexed the string, so every client whose XFF started with the
+// same character shared a bucket — and a spoofed XFF fully bypassed the limit).
+// When TRUST_PROXY is enabled the app sets `app.proxy = true` (see app.ts) and
+// Koa parses X-Forwarded-For for us — so we just use `ctx.ip`. When it is NOT
+// enabled we ignore the attacker-controllable XFF entirely and use the socket
+// address. As a defensive fallback (proxy trusted but ctx.ip empty) we parse the
+// FIRST comma-separated IP, not the first character.
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function clientId(ctx: any): string {
+	if (config.TRUST_PROXY) {
+		if (ctx.ip) {
+			return ctx.ip;
+		}
+		const xff = ctx.headers['x-forwarded-for'];
+		const first = Array.isArray(xff) ? xff[0] : xff?.split(',')[0]?.trim();
+		return first || ctx.ip;
+	}
+	return ctx.ip;
+}
+
 // global rate limit middleware
 export const rateLimitMiddleware = rateLimit({
 	driver: 'memory',
 	db: new Map(),
-	// use the first IP address in the X-Forwarded-For header, or the IP address of the request
-	id: (ctx) => ctx.headers['x-forwarded-for']?.[0] || ctx.ip,
+	id: (ctx) => clientId(ctx),
 	duration: config.GLOBAL_RATE_LIMIT_WINDOW_SECONDS * 1000,
 	max: config.GLOBAL_RATE_LIMIT_THRESHOLD,
 	disableHeader: false,

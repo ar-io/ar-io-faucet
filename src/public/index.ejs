@@ -154,17 +154,24 @@
         // GitHub OAuth gate wiring
         const githubOAuthEnabled = <%= githubOAuthEnabled ? 'true' : 'false' %>;
         const tokenId = '<%= tokenId %>';
-        let githubToken = null;
 
-        // Read a GitHub-bound token returned by the OAuth callback via URL fragment.
-        (function readTokenFromFragment() {
-            if (!location.hash) return;
-            const params = new URLSearchParams(location.hash.slice(1));
-            const token = params.get('token');
-            if (token) {
-                githubToken = token;
-                // strip the fragment so the token isn't left in the address bar on reload
-                history.replaceState(null, '', location.pathname + location.search);
+        // The claim token is NO LONGER exposed to JS / the URL. The OAuth callback
+        // sets it in an HttpOnly, Secure, SameSite=Lax cookie scoped to /api and
+        // redirects back with `?github=1` purely as a UI signal. The cookie is
+        // sent automatically on the claim request (credentials: 'include').
+        let githubSignedIn = false;
+        (function readGithubSignal() {
+            const params = new URLSearchParams(location.search);
+            if (params.get('github') === '1') {
+                githubSignedIn = true;
+                // strip the query flag so a reload doesn't keep it around
+                params.delete('github');
+                const qs = params.toString();
+                history.replaceState(
+                    null,
+                    '',
+                    location.pathname + (qs ? `?${qs}` : ''),
+                );
             }
         })();
 
@@ -173,7 +180,7 @@
             const link = document.getElementById('githubLoginLink');
             const status = document.getElementById('githubStatus');
             link.href = `<%= baseUrl %>/api/auth/github/login?process-id=${encodeURIComponent(tokenId)}`;
-            if (githubToken) {
+            if (githubSignedIn) {
                 status.textContent = 'GitHub sign-in complete. You can now claim.';
             } else {
                 gate.classList.remove('hidden');
@@ -191,7 +198,7 @@
                 return;
             }
 
-            if (githubOAuthEnabled && !githubToken) {
+            if (githubOAuthEnabled && !githubSignedIn) {
                 showError('Please sign in with GitHub before claiming.');
                 return;
             }
@@ -200,15 +207,12 @@
             const processId = document.getElementById('processId').value;
             const qty = document.getElementById('qty').value;
 
-            const headers = { 'Content-Type': 'application/json' };
-            if (githubToken) {
-                headers['Authorization'] = `Bearer ${githubToken}`;
-            }
-
             try {
                 const response = await fetch('<%= baseUrl %>/api/claim/sync', {
                     method: 'POST',
-                    headers,
+                    headers: { 'Content-Type': 'application/json' },
+                    // send the HttpOnly claim-token + session cookies
+                    credentials: 'include',
                     body: JSON.stringify({
                         processId,
                         captchaResponse: hcaptchaResponse,

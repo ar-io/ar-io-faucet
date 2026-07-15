@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 import { z } from 'zod';
+import * as config from './config.js';
 
 export interface TokenPayload {
 	issuer: string;
@@ -25,6 +26,10 @@ export interface TokenPayload {
 	iat: number;
 	exp: number;
 	nonce: string;
+	// Initiating browser session id. Bound into the claim JWT and matched against
+	// the `faucet_sid` cookie at claim time so a leaked token can't be replayed
+	// from a different session. Optional for API/non-browser clients.
+	sid?: string;
 	// GitHub-bound claim credentials (optional for back-compat)
 	githubId?: number | string;
 	githubLogin?: string;
@@ -34,6 +39,10 @@ export interface TokenPayload {
 export interface TokenCache {
 	get(nonce: string): Promise<TokenPayload | null>;
 	set(nonce: string, token: TokenPayload): Promise<void>;
+	// Atomic, synchronous set-if-absent. Returns true if the caller reserved the
+	// nonce, false if it was already present. Used to burn a nonce BEFORE the
+	// transfer so concurrent claims sharing a nonce cannot all pass.
+	reserve(nonce: string, token: TokenPayload): boolean;
 	delete(nonce: string): Promise<void>;
 	clear(): Promise<void>;
 	size(): Promise<number>;
@@ -50,6 +59,7 @@ export interface TokenFaucet {
 		githubId: number | string;
 		githubLogin: string;
 		githubAccountCreatedAt: string;
+		sid?: string;
 	}): Promise<{
 		token: string;
 		expiresAt: number;
@@ -89,17 +99,29 @@ export const CaptchaRequestSchema = z.object({
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
+// qty must be a positive integer within the faucet's max. The per-claim floor
+// (minQty) is enforced at claim time in the faucet since it depends on runtime
+// config that can be overridden per-faucet instance.
+const QtySchema = z
+	.number()
+	.int('Quantity must be an integer')
+	.positive('Quantity must be greater than 0')
+	.max(
+		config.DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY,
+		`Quantity must be less than or equal to ${config.DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY}`,
+	);
+
 export const ClaimRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
 	recipient: SolanaAddressSchema,
-	qty: z.number().min(0, 'Quantity must be greater than 0'),
+	qty: QtySchema,
 	captchaResponse: z.string().min(1, 'Captcha response is required'),
 });
 
 export const AsyncClaimRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
 	recipient: SolanaAddressSchema,
-	qty: z.number().min(0, 'Quantity must be greater than 0'),
+	qty: QtySchema,
 });
 
 export type AuthTokenRequest = z.infer<typeof AuthTokenRequestSchema>;

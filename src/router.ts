@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+import crypto from 'node:crypto';
 import rateLimit from 'koa-ratelimit';
 import Router from 'koa-router';
 import * as config from './config.js';
@@ -176,8 +177,13 @@ router.get('/api/auth/github/login', async (ctx) => {
 		throw new BadRequestError('Process not supported.');
 	}
 
-	// bind the target tokenId (processId) into the state value
-	const state = stateStore.generateState(processId);
+	// establish (or reuse) an initiating browser session id. It is set as an
+	// HttpOnly cookie and bound into the OAuth state so the claim token issued at
+	// the callback can be bound to THIS session.
+	const sid = getOrCreateSessionId(ctx);
+
+	// bind the target tokenId (processId) + session id into the state value
+	const state = stateStore.generateState({ processId, sid });
 	ctx.redirect(githubOAuth.buildAuthorizeUrl(state));
 });
 
@@ -195,9 +201,17 @@ router.get('/api/auth/github/callback', async (ctx) => {
 	}
 
 	// 1. one-time state consume (CSRF/replay protection)
-	const processId = stateStore.consume(state);
-	if (!processId) {
+	const stateValue = stateStore.consume(state);
+	if (!stateValue) {
 		throw new BadRequestError('Invalid or expired OAuth state');
+	}
+	const { processId, sid: stateSid } = stateValue;
+
+	// bind the flow to the initiating browser session: the session cookie set at
+	// login must still match the sid embedded in the state.
+	const cookieSid = ctx.cookies.get(config.SESSION_COOKIE);
+	if (!cookieSid || cookieSid !== stateSid) {
+		throw new BadRequestError('Session mismatch for OAuth callback');
 	}
 
 	const faucet = supportedProcesses.get(processId);
@@ -214,8 +228,12 @@ router.get('/api/auth/github/callback', async (ctx) => {
 	// 4. account-age gate
 	githubOAuth.assertAccountOldEnough(user.created_at);
 
-	// 5. per-githubId anti-sybil (enforced again at claim time)
-	if (githubClaimStore.has(user.id)) {
+	// 5. per-githubId anti-sybil. RESERVE the slot atomically (set-if-absent) so
+	// two concurrent callbacks for the same GitHub account can't both mint a
+	// claim-capable token. This is the identity-gate reservation; the claim path
+	// additionally burns the per-JWT nonce. Roll back only if token issuance
+	// below fails.
+	if (!githubClaimStore.reserve(user.id)) {
 		ctx.status = 429;
 		ctx.body = {
 			error: 'Already claimed for this GitHub account this window',
@@ -223,22 +241,33 @@ router.get('/api/auth/github/callback', async (ctx) => {
 		return;
 	}
 
-	// 6. issue the GitHub-bound claim-capable JWT
-	const token = await faucet.requestAuthTokenForGithub({
-		githubId: user.id,
-		githubLogin: user.login,
-		githubAccountCreatedAt: user.created_at,
-	});
+	// 6. issue the GitHub-bound claim-capable JWT, bound to the initiating session
+	let token: { token: string; expiresAt: number };
+	try {
+		token = await faucet.requestAuthTokenForGithub({
+			githubId: user.id,
+			githubLogin: user.login,
+			githubAccountCreatedAt: user.created_at,
+			sid: stateSid,
+		});
+	} catch (error) {
+		// token issuance failed (e.g. insufficient faucet balance) — release the
+		// reservation so the user can retry.
+		githubClaimStore.release(user.id);
+		throw error;
+	}
 
-	// 7. respond. If a self-hosted frontend is enabled, redirect back with the
-	// token in the URL fragment; otherwise return JSON for API clients.
+	// 7. respond. If a self-hosted frontend is enabled, deliver the claim token
+	// via an HttpOnly + Secure + SameSite=Lax cookie scoped to /api (NOT the URL
+	// fragment) so it never leaks through history / Referer / logs, then redirect
+	// back to the frontend without any secret in the URL. Otherwise return JSON
+	// for API clients (which manage the token themselves).
 	if (config.ENABLE_SELF_HOSTED_FRONTEND) {
+		setClaimTokenCookie(ctx, token.token, token.expiresAt);
 		ctx.redirect(
-			`${config.FRONT_END_URL}/#token=${encodeURIComponent(
-				token.token,
-			)}&expiresAt=${token.expiresAt}&process-id=${encodeURIComponent(
+			`${config.FRONT_END_URL}/?process-id=${encodeURIComponent(
 				processId,
-			)}`,
+			)}&github=1`,
 		);
 		return;
 	}
@@ -252,14 +281,14 @@ router.get('/api/auth/github/callback', async (ctx) => {
 
 // claim tokens to a recipient using an authorization token
 router.post('/api/claim/async', async (ctx) => {
-	const authorization = ctx.request.headers.authorization;
-	if (!authorization) {
+	// accept the claim token from the HttpOnly cookie (browser flow) or the
+	// Authorization header (API clients).
+	const authToken = getClaimToken(ctx);
+	if (!authToken) {
 		ctx.status = 401;
 		ctx.body = { error: 'Unauthorized' };
 		return;
 	}
-
-	const authToken = authorization.split(' ')[1];
 
 	// parse the request body
 	const claimRequest = AsyncClaimRequestSchema.safeParse(ctx.request.body);
@@ -277,6 +306,12 @@ router.post('/api/claim/async', async (ctx) => {
 	if (!valid || !payload) {
 		ctx.status = 401;
 		ctx.body = { error: 'Invalid token' };
+		return;
+	}
+
+	if (!sessionBindingOk(ctx, payload)) {
+		ctx.status = 401;
+		ctx.body = { error: 'Session mismatch for claim token' };
 		return;
 	}
 
@@ -312,18 +347,23 @@ router.post('/api/claim/sync', async (ctx) => {
 	let payload: TokenPayload | undefined;
 
 	if (config.GITHUB_OAUTH_ENABLED) {
-		// require the GitHub-bound JWT in addition to hCaptcha
-		const authorization = ctx.request.headers.authorization;
-		if (!authorization) {
+		// require the GitHub-bound JWT in addition to hCaptcha. The token comes
+		// from the HttpOnly cookie (browser flow) or Authorization header (API).
+		const authToken = getClaimToken(ctx);
+		if (!authToken) {
 			ctx.status = 401;
 			ctx.body = { error: 'Unauthorized' };
 			return;
 		}
-		const authToken = authorization.split(' ')[1];
 		const verified = await verifyAuthTokenSafe(faucet, authToken);
 		if (!verified.valid || !verified.payload) {
 			ctx.status = 401;
 			ctx.body = { error: 'Invalid token' };
+			return;
+		}
+		if (!sessionBindingOk(ctx, verified.payload)) {
+			ctx.status = 401;
+			ctx.body = { error: 'Session mismatch for claim token' };
 			return;
 		}
 		payload = verified.payload;
@@ -333,6 +373,65 @@ router.post('/api/claim/sync', async (ctx) => {
 });
 
 export default router;
+
+// Read the claim JWT: prefer the HttpOnly cookie set by the OAuth callback
+// (browser flow), fall back to the Authorization: Bearer header (API clients).
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function getClaimToken(ctx: any): string | undefined {
+	const cookieToken = ctx.cookies.get(config.CLAIM_TOKEN_COOKIE);
+	if (cookieToken) {
+		return cookieToken;
+	}
+	const authorization = ctx.request.headers.authorization;
+	return authorization ? authorization.split(' ')[1] : undefined;
+}
+
+// Enforce the session binding: if the JWT carries a `sid` (browser-issued
+// tokens do), the request must present a matching `faucet_sid` cookie. Tokens
+// without a `sid` (pure API clients) are exempt so header-based automation keeps
+// working.
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function sessionBindingOk(ctx: any, payload: TokenPayload): boolean {
+	if (!payload.sid) {
+		return true;
+	}
+	return ctx.cookies.get(config.SESSION_COOKIE) === payload.sid;
+}
+
+// Get the initiating session id from the `faucet_sid` cookie, minting one (and
+// setting the cookie) if absent. HttpOnly + SameSite=Lax so it survives the
+// OAuth redirect round-trip but isn't script-readable.
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function getOrCreateSessionId(ctx: any): string {
+	const existing = ctx.cookies.get(config.SESSION_COOKIE);
+	if (existing) {
+		return existing;
+	}
+	const sid = crypto.randomUUID();
+	ctx.cookies.set(config.SESSION_COOKIE, sid, {
+		httpOnly: true,
+		secure: config.COOKIE_SECURE,
+		sameSite: 'lax',
+		path: '/',
+		maxAge: config.GITHUB_OAUTH_STATE_TTL_SECONDS * 1000,
+	});
+	return sid;
+}
+
+// Deliver the claim JWT to the browser via an HttpOnly + Secure + SameSite=Lax
+// cookie scoped to /api. Lifetime is minimized to the token's own expiry.
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function setClaimTokenCookie(ctx: any, token: string, expiresAt: number): void {
+	// expiresAt is in seconds (JWT exp); convert to a ms-from-now maxAge.
+	const maxAge = Math.max(0, expiresAt * 1000 - Date.now());
+	ctx.cookies.set(config.CLAIM_TOKEN_COOKIE, token, {
+		httpOnly: true,
+		secure: config.COOKIE_SECURE,
+		sameSite: 'lax',
+		path: '/api',
+		maxAge,
+	});
+}
 
 // verify a token without throwing (JWT verify throws on invalid tokens); an
 // invalid/expired token should surface as valid=false, not a 503.
@@ -347,9 +446,18 @@ async function verifyAuthTokenSafe(
 	}
 }
 
-// shared claim execution: enforce per-githubId anti-sybil (when a github-bound
-// payload is present), run the transfer, then burn the token nonce so the same
-// JWT cannot be replayed.
+// shared claim execution.
+//
+// SECURITY (TOCTOU concurrent-replay drain): the per-JWT nonce is RESERVED
+// atomically and synchronously BEFORE the transfer is dispatched — never after.
+// reserveNonce() is a set-if-absent in a single critical section (has()+set()
+// with no await in between), so of N concurrent claims sharing the same JWT
+// exactly one wins the reservation and the rest are rejected before any tokens
+// move. The per-githubId anti-sybil slot is reserved earlier, at the OAuth
+// callback (the identity gate); here we re-check it as defense-in-depth (a valid
+// JWT should always correspond to a still-held slot). Only a DEFINITIVE transfer
+// failure rolls the nonce back (so a legitimate user can retry with the same
+// token before it expires); on success it stays burned.
 async function performClaim(
 	// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
 	ctx: any,
@@ -358,9 +466,11 @@ async function performClaim(
 	{ recipient, qty }: { recipient: string; qty: number },
 ): Promise<void> {
 	const githubId = payload?.githubId;
+	const solanaFaucet = faucet as SolanaTokenFaucet;
 
-	// per-githubId anti-sybil: one claim per GitHub id per rate-limit window
-	if (githubId !== undefined && githubClaimStore.has(githubId)) {
+	// 1. per-githubId anti-sybil re-check. The slot was reserved at the OAuth
+	// callback; if it's gone the window rolled over — reject rather than transfer.
+	if (githubId !== undefined && !githubClaimStore.has(githubId)) {
 		ctx.status = 429;
 		ctx.body = {
 			error: 'Already claimed for this GitHub account this window',
@@ -368,19 +478,30 @@ async function performClaim(
 		return;
 	}
 
-	const { id, status } = await faucet.claim({
-		recipient,
-		qty,
-		githubId,
-	});
-
-	// record anti-sybil + burn the token nonce on success
-	if (githubId !== undefined) {
-		githubClaimStore.record(githubId);
-	}
-	if (payload) {
-		await (faucet as SolanaTokenFaucet).consumeNonce(payload);
+	// 2. RESERVE (burn) the token nonce (atomic set-if-absent) BEFORE the
+	// transfer. If the nonce was already reserved/consumed, this is a replay —
+	// reject before any tokens move.
+	if (payload && !solanaFaucet.reserveNonce(payload)) {
+		ctx.status = 409;
+		ctx.body = { error: 'Token already used' };
+		return;
 	}
 
-	ctx.body = { id, status };
+	// 3. Dispatch the transfer. The nonce is now held, so no other concurrent
+	// request carrying the same token can also reach this point.
+	try {
+		const { id, status } = await faucet.claim({
+			recipient,
+			qty,
+			githubId,
+		});
+		ctx.body = { id, status };
+	} catch (error) {
+		// Definitive failure: roll back the nonce reservation so the user can
+		// retry with the same (still-valid) token.
+		if (payload) {
+			await solanaFaucet.releaseNonce(payload);
+		}
+		throw error;
+	}
 }
