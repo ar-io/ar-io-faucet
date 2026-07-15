@@ -33,13 +33,13 @@ export const DEFAULT_FAUCET_TOKEN_CACHE_SIZE = +(
 	(process.env.DEFAULT_FAUCET_TOKEN_CACHE_SIZE || 100) // 100 tokens
 );
 export const DEFAULT_FAUCET_TOKEN_TRANSFER_QTY = +(
-	(process.env.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY || 10_000_000_000) // 10k ARIO
+	(process.env.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY || 2_500_000_000) // 2.5k ARIO
 );
 export const DEFAULT_MIN_FAUCET_TOKEN_TRANSFER_QTY = +(
 	(process.env.DEFAULT_MIN_FAUCET_TOKEN_TRANSFER_QTY || 10_000_000) // 10 ARIO
 );
 export const DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY = +(
-	(process.env.DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY || 10_000_000_000) // 10k ARIO
+	(process.env.DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY || 2_500_000_000) // 2.5k ARIO
 );
 
 // frontend config
@@ -137,7 +137,7 @@ export const LOG_FORMAT = process.env.LOG_FORMAT || 'json';
 
 // rate limiting config
 export const GLOBAL_RATE_LIMIT_WINDOW_SECONDS = +(
-	(process.env.GLOBAL_RATE_LIMIT_WINDOW_SECONDS || 3600) // 1 hour
+	(process.env.GLOBAL_RATE_LIMIT_WINDOW_SECONDS || 28800) // 8 hours
 );
 export const GLOBAL_RATE_LIMIT_THRESHOLD = +(
 	process.env.GLOBAL_RATE_LIMIT_THRESHOLD || 10

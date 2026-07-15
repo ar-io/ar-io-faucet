@@ -17,7 +17,7 @@ AR.IO testnet sandbox — pay the sandbox bundler (`upload.services.ar-io.dev`,
 - Network: **Solana devnet** (`https://api.devnet.solana.com`).
 - Token: **ARIO-staging SPL**, mint `6vTw5CysRXQ4ybbHkDUiisHWVsBeMtUzYvJqs2iqHyaN`, **6 decimals**.
 - `processId` for every request: **`solana-devnet`**.
-- `qty` is in **base units** (10 ARIO = `10000000`). Per-claim min 10 ARIO, max 10,000 ARIO.
+- `qty` is in **base units** (10 ARIO = `10000000`). Per-claim min 10 ARIO, max 2,500 ARIO.
 - `recipient` is a **Solana base58 address**.
 
 ## Prerequisites (recipient side)
@@ -26,7 +26,7 @@ AR.IO testnet sandbox — pay the sandbox bundler (`upload.services.ar-io.dev`,
 
 ## The claim flow (humans)
 Go to `https://faucet.ar.io` → **Sign in with GitHub** → enter your Solana address → **Claim**.
-The gate: one claim per GitHub account per window, GitHub account must be ≥ 30 days old, plus rate limits. (Anti-sybil — see the agent note below.)
+The gate: one claim per GitHub account per 8-hour window, GitHub account must be ≥ 30 days old, plus rate limits. (Anti-sybil — see the agent note below.)
 
 ## API reference (backend: `https://faucet.services.ar-io.dev`)
 | Method + path | Purpose |
@@ -63,7 +63,7 @@ the GitHub browser consent). Practical paths for agents:
 Do **not** attempt to defeat the OAuth gate — it exists to keep the shared testbed usable.
 
 ## Limits & behavior
-- Per-GitHub-account: one claim per rate-limit window; GitHub account ≥ 30 days old.
+- Per-GitHub-account: one claim per rate-limit window (default 8h); GitHub account ≥ 30 days old.
 - Per-IP rate limit (behind the trusted proxy).
-- Amounts bounded (min 10 / max 10,000 ARIO).
+- Amounts bounded (min 10 / max 2,500 ARIO).
 - Devnet RPC is flaky — expect the occasional `202 pending`; verify on-chain rather than retrying.

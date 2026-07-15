@@ -133,7 +133,7 @@ curl -X POST http://localhost:3000/api/claim/async \
 
 ## Rate Limiting
 
-The service includes various rate limiting mechanisms to prevent abuse, defaulting to a global rate limit of 10 requests per hour and a captcha rate limit of 1 request per hour. This can be adjusted by changing the `*_RATE_LIMIT_*` environment variables.
+The service includes various rate limiting mechanisms to prevent abuse, defaulting to a global rate limit of 10 requests per 8-hour window and a captcha rate limit of 1 request per hour. This can be adjusted by changing the `*_RATE_LIMIT_*` environment variables.
 
 ## Captcha Protection
 
