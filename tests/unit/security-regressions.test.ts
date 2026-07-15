@@ -45,8 +45,8 @@ import {
 } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import jwt from 'jsonwebtoken';
-import { performClaim } from '../../src/claim.js';
 import { NodeTokenCache } from '../../src/cache/token-cache.js';
+import { performClaim } from '../../src/claim.js';
 import { SolanaTokenFaucet } from '../../src/faucet/solana-token-faucet.js';
 import { clientId } from '../../src/middleware/rate-limiter.js';
 import type { TokenPayload } from '../../src/types.js';
@@ -206,9 +206,7 @@ describe('regression (1): concurrent double-claim on the same JWT', () => {
 		);
 		accounts.set(
 			recipientAta.toBase58(),
-			accountInfo(
-				encodeTokenAccount({ mint, owner: recipient, amount: 0n }),
-			),
+			accountInfo(encodeTokenAccount({ mint, owner: recipient, amount: 0n })),
 		);
 		return { accounts, recipient: recipient.toBase58() };
 	}
@@ -259,9 +257,7 @@ describe('regression (1): concurrent double-claim on the same JWT', () => {
 		);
 
 		// Exactly one ctx got a success body; the rest were rejected as replays.
-		const successes = ctxs.filter(
-			(c) => c.body && c.body.status === 'success',
-		);
+		const successes = ctxs.filter((c) => c.body && c.body.status === 'success');
 		const replays = ctxs.filter((c) => c.status === 409);
 		assert.strictEqual(successes.length, 1, 'exactly one claim succeeds');
 		assert.strictEqual(
@@ -415,7 +411,11 @@ describe('regression (1b): confirm-timeout must not release the nonce', () => {
 		);
 
 		// Surfaced as a distinct pending/unknown status, NOT a hard failure.
-		assert.strictEqual(ctx1.status, 202, 'timeout is surfaced as pending (202)');
+		assert.strictEqual(
+			ctx1.status,
+			202,
+			'timeout is surfaced as pending (202)',
+		);
 		assert.strictEqual(ctx1.body.status, 'pending');
 		assert.strictEqual(
 			sendTransaction.mock.callCount(),

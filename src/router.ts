@@ -426,7 +426,7 @@ function getOrCreateSessionId(ctx: any): string {
 	ctx.cookies.set(config.SESSION_COOKIE, sid, {
 		httpOnly: true,
 		secure: config.COOKIE_SECURE,
-		sameSite: 'lax',
+		sameSite: config.COOKIE_SAMESITE,
 		path: '/',
 		maxAge: config.GITHUB_OAUTH_STATE_TTL_SECONDS * 1000,
 	});
@@ -442,7 +442,7 @@ function setClaimTokenCookie(ctx: any, token: string, expiresAt: number): void {
 	ctx.cookies.set(config.CLAIM_TOKEN_COOKIE, token, {
 		httpOnly: true,
 		secure: config.COOKIE_SECURE,
-		sameSite: 'lax',
+		sameSite: config.COOKIE_SAMESITE,
 		path: '/api',
 		maxAge,
 	});

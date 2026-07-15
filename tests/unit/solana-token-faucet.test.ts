@@ -178,10 +178,7 @@ describe('SolanaTokenFaucet.claim (SPL transfer)', () => {
 	beforeEach(async () => {
 		faucetKeypair = Keypair.generate();
 		mint = Keypair.generate().publicKey;
-		faucetAta = await getAssociatedTokenAddress(
-			mint,
-			faucetKeypair.publicKey,
-		);
+		faucetAta = await getAssociatedTokenAddress(mint, faucetKeypair.publicKey);
 	});
 
 	it('transfers when recipient ATA already exists (no create instruction)', async () => {
@@ -216,7 +213,10 @@ describe('SolanaTokenFaucet.claim (SPL transfer)', () => {
 			mint,
 		});
 
-		const result = await faucet.claim({ qty: 500, recipient: recipient.toBase58() });
+		const result = await faucet.claim({
+			qty: 500,
+			recipient: recipient.toBase58(),
+		});
 
 		assert.strictEqual(result.status, 'success');
 		assert.strictEqual(result.id, 'MOCK_SIGNATURE_11111111111111');
@@ -254,7 +254,10 @@ describe('SolanaTokenFaucet.claim (SPL transfer)', () => {
 			mint,
 		});
 
-		const result = await faucet.claim({ qty: 500, recipient: recipient.toBase58() });
+		const result = await faucet.claim({
+			qty: 500,
+			recipient: recipient.toBase58(),
+		});
 		assert.strictEqual(result.status, 'success');
 
 		const tx = sendTransaction.mock.calls[0].arguments[0];
@@ -409,9 +412,7 @@ describe('SolanaTokenFaucet.claim (SPL transfer)', () => {
 		);
 		accounts.set(
 			recipientAta.toBase58(),
-			accountInfo(
-				encodeTokenAccount({ mint, owner: recipient, amount: 0n }),
-			),
+			accountInfo(encodeTokenAccount({ mint, owner: recipient, amount: 0n })),
 		);
 
 		const { connection } = makeConnection(accounts);

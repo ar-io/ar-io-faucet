@@ -178,6 +178,23 @@ is honored (via `ctx.ip`) for rate limiting and hCaptcha. When it is unset the
 header is ignored and the socket address is used, so clients cannot spoof their
 source IP to bypass rate limits.
 
+## Deployment topology (AR.IO testnet)
+
+The AR.IO testnet faucet runs as a **backend API** (`faucet.services.ar-io.dev`,
+matching the bundler's `*.services.ar-io.dev` convention) with a **separate
+frontend app** (`faucet.ar.io`, hosted on Arweave). Because those are different
+registrable domains (cross-*site*), the deployment must:
+
+- point the **GitHub OAuth callback** at the backend: `GITHUB_OAUTH_CALLBACK_URL=https://faucet.services.ar-io.dev/api/auth/github/callback`
+- allow the frontend origin for **credentialed CORS**: `CORS_ALLOWED_ORIGINS=https://faucet.ar.io`
+- send cookies **cross-site**: `COOKIE_SAMESITE=none` (requires `COOKIE_SECURE=true`)
+- set `FRONT_END_URL=https://faucet.ar.io` (where the callback redirects after auth)
+
+Run behind a TLS-terminating reverse proxy that forwards `X-Forwarded-Proto: https`
+and **overwrites** `X-Forwarded-For` (with `TRUST_PROXY=true`). Agents/devs: see
+[`.claude/skills/ario-testnet-faucet/SKILL.md`](.claude/skills/ario-testnet-faucet/SKILL.md)
+for the API + claim flow.
+
 ## Environment Variables
 
 The service supports the following environment variables:

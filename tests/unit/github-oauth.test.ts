@@ -77,7 +77,10 @@ afterEach(() => {
 describe('NodeStateStore (CSRF/state)', () => {
 	it('consume() returns the bound value exactly once (single-use)', () => {
 		const store = new NodeStateStore({ ttlSeconds: 600 });
-		const state = store.generateState({ processId: 'solana-devnet', sid: 's1' });
+		const state = store.generateState({
+			processId: 'solana-devnet',
+			sid: 's1',
+		});
 		assert.deepStrictEqual(store.consume(state), {
 			processId: 'solana-devnet',
 			sid: 's1',
@@ -93,13 +96,19 @@ describe('NodeStateStore (CSRF/state)', () => {
 
 	it('binds the initiating session id into the state value', () => {
 		const store = new NodeStateStore({ ttlSeconds: 600 });
-		const state = store.generateState({ processId: 'solana-devnet', sid: 'sid-xyz' });
+		const state = store.generateState({
+			processId: 'solana-devnet',
+			sid: 'sid-xyz',
+		});
 		assert.strictEqual(store.consume(state)?.sid, 'sid-xyz');
 	});
 
 	it('rejects a state that has expired (TTL elapsed)', () => {
 		const store = new NodeStateStore({ ttlSeconds: 1 });
-		const state = store.generateState({ processId: 'solana-devnet', sid: 's1' });
+		const state = store.generateState({
+			processId: 'solana-devnet',
+			sid: 's1',
+		});
 		// force-expire by reaching into the underlying cache TTL
 		// biome-ignore lint/suspicious/noExplicitAny: access private cache for TTL manipulation
 		const cache = (store as any).cache;
@@ -158,10 +167,7 @@ describe('GitHubOAuthClient.assertAccountOldEnough (account-age gate)', () => {
 	it('rejects at exactly one day under the threshold', () => {
 		const client = makeClient({ minAccountAgeDays: 30 });
 		const created = new Date(Date.now() - 29 * DAY_MS).toISOString();
-		assert.throws(
-			() => client.assertAccountOldEnough(created),
-			/min 30 days/,
-		);
+		assert.throws(() => client.assertAccountOldEnough(created), /min 30 days/);
 	});
 
 	it('rejects an unparseable created_at value', () => {
@@ -249,9 +255,7 @@ describe('GitHubOAuthClient.fetchUser (mocked GitHub API)', () => {
 	});
 
 	it('throws on an incomplete user profile (missing created_at)', async () => {
-		stubFetch([
-			() => ({ status: 200, body: { id: 1, login: 'octocat' } }),
-		]);
+		stubFetch([() => ({ status: 200, body: { id: 1, login: 'octocat' } })]);
 		const client = makeClient();
 		await assert.rejects(
 			() => client.fetchUser('gho_abc'),

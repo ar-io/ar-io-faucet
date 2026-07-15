@@ -48,6 +48,16 @@ export const ENABLE_SELF_HOSTED_FRONTEND =
 export const FRONT_END_URL =
 	process.env.FRONT_END_URL || `http://localhost:${PORT}`;
 
+// Browser origins allowed to call the API with credentials (cookies). Needed
+// when the frontend (e.g. faucet.ar.io) is a separate origin from this backend
+// (e.g. faucet.services.ar-io.dev). Comma-separated; defaults to FRONT_END_URL.
+export const CORS_ALLOWED_ORIGINS = (
+	process.env.CORS_ALLOWED_ORIGINS || FRONT_END_URL
+)
+	.split(',')
+	.map((s) => s.trim())
+	.filter(Boolean);
+
 // wallet config
 export const WALLET_FILE = process.env.WALLET_FILE;
 export const WALLET = WALLET_FILE
@@ -82,8 +92,7 @@ export const GITHUB_OAUTH_ENABLED =
 	process.env.GITHUB_OAUTH_ENABLED !== 'false';
 export const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 export const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
-export const GITHUB_OAUTH_CALLBACK_URL =
-	process.env.GITHUB_OAUTH_CALLBACK_URL;
+export const GITHUB_OAUTH_CALLBACK_URL = process.env.GITHUB_OAUTH_CALLBACK_URL;
 export const GITHUB_MIN_ACCOUNT_AGE_DAYS = +(
 	process.env.GITHUB_MIN_ACCOUNT_AGE_DAYS || 30
 );
@@ -108,6 +117,14 @@ export const SESSION_COOKIE = 'faucet_sid';
 // Secure flag on cookies. Defaults on; set COOKIE_SECURE=false only for local
 // plain-HTTP development.
 export const COOKIE_SECURE = process.env.COOKIE_SECURE !== 'false';
+// SameSite policy for the session + claim-token cookies. Default 'lax' (safe for
+// a same-origin / same-site frontend). Set to 'none' when the frontend is a
+// DIFFERENT site from this backend (e.g. frontend faucet.ar.io, backend
+// faucet.services.ar-io.dev — different registrable domains), so the credentialed
+// cross-site fetch actually sends the cookie. 'none' REQUIRES COOKIE_SECURE=true.
+const _sameSite = (process.env.COOKIE_SAMESITE || 'lax').toLowerCase();
+export const COOKIE_SAMESITE: 'lax' | 'strict' | 'none' =
+	_sameSite === 'none' || _sameSite === 'strict' ? _sameSite : 'lax';
 
 // proxy trust. Koa only honours X-Forwarded-For when app.proxy is true. Enable
 // this ONLY when the faucet sits behind a known, trusted reverse proxy that sets

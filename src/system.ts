@@ -50,8 +50,7 @@ const mint = new PublicKey(config.SOLANA_TOKEN_MINT as string);
 
 // resolve token decimals from chain unless explicitly configured
 const decimals =
-	config.SOLANA_TOKEN_DECIMALS ??
-	(await getMint(connection, mint)).decimals;
+	config.SOLANA_TOKEN_DECIMALS ?? (await getMint(connection, mint)).decimals;
 
 export const walletAddress = faucetKeypair.publicKey.toBase58();
 

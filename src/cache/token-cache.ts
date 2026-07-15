@@ -20,9 +20,7 @@ import type { TokenCache, TokenPayload } from '../types.js';
 
 export class NodeTokenCache implements TokenCache {
 	private cache: NodeCache;
-	constructor({
-		ttlSeconds,
-	}: { ttlSeconds: number }) {
+	constructor({ ttlSeconds }: { ttlSeconds: number }) {
 		// NOTE: no `maxKeys` cap. A bounded NodeCache THROWS on the set() that
 		// overflows it, which — if it happened while recording a consumed nonce
 		// after a successful on-chain transfer — would leave the nonce unrecorded

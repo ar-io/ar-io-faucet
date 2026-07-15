@@ -43,8 +43,23 @@ const app = new Koa();
 // source IP to bypass rate limits or hCaptcha's remoteip check.
 app.proxy = config.TRUST_PROXY;
 
-// static files are not rate limited or logged
-app.use(cors());
+// CORS: allow the configured frontend origin(s) to call the API WITH
+// credentials (the claim-token + session cookies). Credentialed CORS requires
+// echoing a specific origin (never "*"), so we reflect the request origin only
+// when it is in the allowlist.
+app.use(
+	cors({
+		origin: (ctx) => {
+			const requestOrigin = ctx.get('Origin');
+			return config.CORS_ALLOWED_ORIGINS.includes(requestOrigin)
+				? requestOrigin
+				: '';
+		},
+		credentials: true,
+		allowMethods: ['GET', 'POST', 'OPTIONS'],
+		allowHeaders: ['Content-Type', 'Authorization'],
+	}),
+);
 
 // enable simple front-end for testing
 if (config.ENABLE_SELF_HOSTED_FRONTEND) {
