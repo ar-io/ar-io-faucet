@@ -47,19 +47,26 @@
         <main class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
             <form id="tokenRequestForm" class="space-y-4">
                 <div>
-                    <label for="recipient" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Wallet Address (Supports Arweave/AO and EVM Addresses)</label>
-                    <input type="text" id="recipient" name="recipient" required minlength="26" maxlength="64" pattern="^\S*$" 
-                        title="Wallet address must be between 26-64 characters with no spaces"
+                    <label for="recipient" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Solana Wallet Address (base58)</label>
+                    <input type="text" id="recipient" name="recipient" required minlength="32" maxlength="44" pattern="^[1-9A-HJ-NP-Za-km-z]+$"
+                        title="Must be a valid base58 Solana address (32-44 characters)"
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
                 </div>
 
                 <div>
-                    <label for="processId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Process ID</label>
+                    <label for="processId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Token</label>
                     <select id="processId" name="processId" required
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
-                        <option value="agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA">AR.IO Testnet</option>
-                        <option value="GaQrvEMKBpkjofgnBi_B3IgIDmY_XYelVLB6GcRGrHc">AR.IO Devnet</option>
+                        <option value="<%= tokenId %>"><%= tokenId %></option>
                     </select>
+                </div>
+
+                <div id="githubGate" class="hidden">
+                    <a id="githubLoginLink" href="#"
+                        class="w-full inline-flex justify-center items-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-black dark:text-white bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">
+                        Sign in with GitHub
+                    </a>
+                    <p id="githubStatus" class="mt-2 text-xs text-gray-600 dark:text-gray-400">A GitHub sign-in is required before claiming.</p>
                 </div>
 
                 <div>
@@ -96,7 +103,7 @@
                         <button id="copyToken" class="text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200">Copy to clipboard</button>
                     </div>
                     <div class="mt-2">
-                        <a id="aoExplorerLink" href="#" target="_blank" class="mt-1 text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200 underline break-all">View on AO</a>
+                        <a id="aoExplorerLink" href="#" target="_blank" class="mt-1 text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200 underline break-all">View on Solana Explorer</a>
                     </div>
                 </div>
             </div>
@@ -144,6 +151,42 @@
             }
         });
 
+        // GitHub OAuth gate wiring
+        const githubOAuthEnabled = <%= githubOAuthEnabled ? 'true' : 'false' %>;
+        const tokenId = '<%= tokenId %>';
+
+        // The claim token is NO LONGER exposed to JS / the URL. The OAuth callback
+        // sets it in an HttpOnly, Secure, SameSite=Lax cookie scoped to /api and
+        // redirects back with `?github=1` purely as a UI signal. The cookie is
+        // sent automatically on the claim request (credentials: 'include').
+        let githubSignedIn = false;
+        (function readGithubSignal() {
+            const params = new URLSearchParams(location.search);
+            if (params.get('github') === '1') {
+                githubSignedIn = true;
+                // strip the query flag so a reload doesn't keep it around
+                params.delete('github');
+                const qs = params.toString();
+                history.replaceState(
+                    null,
+                    '',
+                    location.pathname + (qs ? `?${qs}` : ''),
+                );
+            }
+        })();
+
+        if (githubOAuthEnabled) {
+            const gate = document.getElementById('githubGate');
+            const link = document.getElementById('githubLoginLink');
+            const status = document.getElementById('githubStatus');
+            link.href = `<%= baseUrl %>/api/auth/github/login?process-id=${encodeURIComponent(tokenId)}`;
+            if (githubSignedIn) {
+                status.textContent = 'GitHub sign-in complete. You can now claim.';
+            } else {
+                gate.classList.remove('hidden');
+            }
+        }
+
         // Handle form submission
         document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -154,22 +197,27 @@
                 showError('Please complete the captcha');
                 return;
             }
-            
+
+            if (githubOAuthEnabled && !githubSignedIn) {
+                showError('Please sign in with GitHub before claiming.');
+                return;
+            }
+
             const recipient = document.getElementById('recipient').value;
             const processId = document.getElementById('processId').value;
             const qty = document.getElementById('qty').value;
-            
+
             try {
                 const response = await fetch('<%= baseUrl %>/api/claim/sync', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        processId, 
+                    headers: { 'Content-Type': 'application/json' },
+                    // send the HttpOnly claim-token + session cookies
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        processId,
                         captchaResponse: hcaptchaResponse,
                         recipient,
-                        qty: parseInt(qty * 10 ** 6)
+                        qty: parseInt(qty, 10)
                     })
                 });
 
@@ -208,7 +256,7 @@
         
         function showResult(id) {
             document.getElementById('tokenResult').textContent = id;
-            document.getElementById('aoExplorerLink').href = `https://ao.link/#/message/${id}`;
+            document.getElementById('aoExplorerLink').href = `https://explorer.solana.com/tx/${id}?cluster=devnet`;
             document.getElementById('resultContainer').classList.remove('hidden');
             document.getElementById('errorContainer').classList.add('hidden');
             document.getElementById('tokenRequestForm').reset();

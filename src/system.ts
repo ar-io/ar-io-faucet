@@ -15,28 +15,20 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-import {
-	ARIO_DEVNET_PROCESS_ID,
-	ARIO_TESTNET_PROCESS_ID,
-} from '@ar.io/sdk/node';
-import { Arweave } from '@dha-team/arbundles/node';
-import { connect } from '@permaweb/aoconnect/node';
+import { getMint } from '@solana/spl-token';
+import { type Commitment, Connection, PublicKey } from '@solana/web3.js';
 import jwt from 'jsonwebtoken';
+import { GitHubOAuthClient } from './auth/github-oauth.js';
+import { GithubClaimStore, NodeStateStore } from './auth/state-store.js';
 import { NodeTokenCache } from './cache/token-cache.js';
 import { hCaptchaVerifier } from './captcha/hcaptcha.js';
 import * as config from './config.js';
-import { AoTokenFaucet } from './faucet/ao-token-faucet.js';
+import { loadFaucetKeypair } from './faucet/keypair.js';
+import { SolanaTokenFaucet } from './faucet/solana-token-faucet.js';
+import type { TokenFaucet } from './types.js';
 
-export const arweave = Arweave.init({
-	host: 'arweave.net',
-	port: 443,
-	protocol: 'https',
-});
-
-export const ao = connect({
-	MODE: 'legacy',
-	CU_URL: 'https://cu.ardrive.io',
-});
+// validate required env vars before wiring anything up
+config.assertRequiredConfig();
 
 export const captcha = config.CAPTCHA_SECRET_KEY
 	? new hCaptchaVerifier({
@@ -45,39 +37,59 @@ export const captcha = config.CAPTCHA_SECRET_KEY
 		})
 	: undefined;
 
-const wallet = config.WALLET
-	? JSON.parse(config.WALLET)
-	: await arweave.wallets.generate();
+// solana connection + faucet keypair
+export const connection = new Connection(config.SOLANA_RPC_URL, {
+	commitment: config.SOLANA_COMMITMENT as Commitment,
+});
 
-export const walletAddress = await arweave.wallets.getAddress(wallet);
+const faucetKeypair = loadFaucetKeypair(
+	config.SOLANA_FAUCET_SECRET_KEY as string,
+);
 
-export const supportedProcesses = new Map<string, AoTokenFaucet>([
+const mint = new PublicKey(config.SOLANA_TOKEN_MINT as string);
+
+// resolve token decimals from chain unless explicitly configured
+const decimals =
+	config.SOLANA_TOKEN_DECIMALS ?? (await getMint(connection, mint)).decimals;
+
+export const walletAddress = faucetKeypair.publicKey.toBase58();
+
+export const supportedProcesses = new Map<string, TokenFaucet>([
 	[
-		ARIO_TESTNET_PROCESS_ID,
-		new AoTokenFaucet({
+		config.SOLANA_TOKEN_ID,
+		new SolanaTokenFaucet({
 			cache: new NodeTokenCache({
-				maxSize: config.DEFAULT_FAUCET_TOKEN_CACHE_SIZE,
 				ttlSeconds: config.DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS,
 			}),
-			wallet: wallet,
-			processId: ARIO_TESTNET_PROCESS_ID,
-			ao,
-			arweave,
+			connection,
+			faucetKeypair,
+			mint,
+			decimals,
+			tokenId: config.SOLANA_TOKEN_ID,
 			authTokenSigner: jwt,
-		}),
-	],
-	[
-		ARIO_DEVNET_PROCESS_ID,
-		new AoTokenFaucet({
-			cache: new NodeTokenCache({
-				maxSize: config.DEFAULT_FAUCET_TOKEN_CACHE_SIZE,
-				ttlSeconds: config.DEFAULT_FAUCET_TOKEN_EXPIRATION_SECONDS,
-			}),
-			wallet: wallet,
-			processId: ARIO_DEVNET_PROCESS_ID,
-			ao,
-			arweave,
-			authTokenSigner: jwt,
+			authTokenSecret: config.AUTH_TOKEN_SECRET as string,
 		}),
 	],
 ]);
+
+// github oauth gate (only wired when enabled)
+export const githubOAuth = config.GITHUB_OAUTH_ENABLED
+	? new GitHubOAuthClient({
+			clientId: config.GITHUB_CLIENT_ID as string,
+			clientSecret: config.GITHUB_CLIENT_SECRET as string,
+			callbackUrl: config.GITHUB_OAUTH_CALLBACK_URL as string,
+			apiBaseUrl: config.GITHUB_API_BASE_URL,
+			authorizeUrl: config.GITHUB_OAUTH_AUTHORIZE_URL,
+			tokenUrl: config.GITHUB_OAUTH_TOKEN_URL,
+			minAccountAgeDays: config.GITHUB_MIN_ACCOUNT_AGE_DAYS,
+		})
+	: undefined;
+
+export const stateStore = new NodeStateStore({
+	ttlSeconds: config.GITHUB_OAUTH_STATE_TTL_SECONDS,
+});
+
+// per-githubId anti-sybil store (one claim per GitHub id per rate-limit window)
+export const githubClaimStore = new GithubClaimStore({
+	ttlSeconds: config.GLOBAL_RATE_LIMIT_WINDOW_SECONDS,
+});

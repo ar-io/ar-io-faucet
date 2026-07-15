@@ -23,6 +23,8 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 /* eslint-disable no-undef */
 const captchaSiteKey = process.env.CAPTCHA_SITE_KEY;
 const baseUrl = 'https://faucet.ario.permaweb.services';
+const tokenId = process.env.SOLANA_TOKEN_ID || 'solana-devnet';
+const githubOAuthEnabled = process.env.GITHUB_OAUTH_ENABLED !== 'false';
 export async function renderTemplate(templateName, data) {
 	const templatePath = join(
 		process.cwd(),
@@ -39,6 +41,8 @@ for (const templateName of ['index']) {
 	const html = await renderTemplate(templateName, {
 		captchaSiteKey,
 		baseUrl,
+		tokenId,
+		githubOAuthEnabled,
 	});
 	// mkdir public if not exists
 	await mkdir(join(process.cwd(), 'public'), { recursive: true });

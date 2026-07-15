@@ -20,12 +20,13 @@ import type { TokenCache, TokenPayload } from '../types.js';
 
 export class NodeTokenCache implements TokenCache {
 	private cache: NodeCache;
-	constructor({
-		maxSize,
-		ttlSeconds,
-	}: { maxSize: number; ttlSeconds: number }) {
+	constructor({ ttlSeconds }: { ttlSeconds: number }) {
+		// NOTE: no `maxKeys` cap. A bounded NodeCache THROWS on the set() that
+		// overflows it, which — if it happened while recording a consumed nonce
+		// after a successful on-chain transfer — would leave the nonce unrecorded
+		// and open the door to replay. In-flight nonces are naturally bounded by
+		// the token TTL (stdTTL) + rate limits, so eviction-by-TTL is sufficient.
 		this.cache = new NodeCache({
-			maxKeys: maxSize,
 			checkperiod: 0,
 			useClones: false,
 			stdTTL: ttlSeconds,
@@ -38,6 +39,19 @@ export class NodeTokenCache implements TokenCache {
 
 	async set(nonce: string, token: TokenPayload): Promise<void> {
 		this.cache.set(nonce, token);
+	}
+
+	// Atomic set-if-absent. Synchronous by design: the has()-check and the set()
+	// happen in a single critical section with no await in between, so two
+	// concurrent claims carrying the same nonce cannot both observe it as absent.
+	// Returns true if this caller reserved the nonce, false if it was already
+	// present (i.e. already reserved/consumed → reject the claim as a replay).
+	reserve(nonce: string, token: TokenPayload): boolean {
+		if (this.cache.has(nonce)) {
+			return false;
+		}
+		this.cache.set(nonce, token);
+		return true;
 	}
 
 	async delete(nonce: string): Promise<void> {

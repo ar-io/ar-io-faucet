@@ -15,12 +15,25 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+// MANUAL / opt-in suite (`yarn test:e2e`) — NOT run in CI. It builds and runs the
+// Docker image (needs a Docker runtime) AND the token-issuance path requires a
+// FUNDED faucet wallet on a real Solana network (the ported code balance-checks
+// before issuing a claim token). CI runs `yarn test` = `test:unit` (mocked,
+// hermetic). Run this locally against a funded devnet wallet + real mint.
 import assert from 'node:assert';
 import { after, before, describe, it } from 'node:test';
-import { ARIO_TESTNET_PROCESS_ID } from '@ar.io/sdk';
+import { Keypair } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { GenericContainer, type StartedTestContainer } from 'testcontainers';
 
 const context = process.cwd();
+
+// Deterministic-enough test fixtures. The faucet only needs a parseable secret
+// key + a base58 mint at boot; no on-chain transfer is exercised in these tests.
+const TOKEN_ID = 'solana-devnet';
+const FAUCET_SECRET_KEY = bs58.encode(Keypair.generate().secretKey);
+const TOKEN_MINT = Keypair.generate().publicKey.toBase58();
+const AUTH_TOKEN_SECRET = 'test-auth-token-secret';
 
 describe('faucet api', async () => {
 	let container: StartedTestContainer;
@@ -34,8 +47,17 @@ describe('faucet api', async () => {
 			.withExposedPorts(3000)
 			.withEnvironment({
 				REQUIRE_CAPTCHA_VERIFICATION: 'false',
-				DEFAULT_MIN_FAUCET_TOKEN_TRANSFER_QTY: '0',
 				CAPTCHA_RATE_LIMIT_THRESHOLD: '1000',
+				// solana faucet config
+				SOLANA_TOKEN_ID: TOKEN_ID,
+				SOLANA_TOKEN_MINT: TOKEN_MINT,
+				SOLANA_TOKEN_DECIMALS: '6',
+				SOLANA_FAUCET_SECRET_KEY: FAUCET_SECRET_KEY,
+				AUTH_TOKEN_SECRET,
+				// disable the github gate for the non-oauth tests; DEV_PROFILE opts
+				// past the startup guard that refuses to boot with the gate off
+				GITHUB_OAUTH_ENABLED: 'false',
+				DEV_PROFILE: 'true',
 			})
 			.start();
 
@@ -58,19 +80,15 @@ describe('faucet api', async () => {
 
 	it('should return a captcha url for a valid process id', async () => {
 		const response = await fetch(
-			`${apiUrl}/api/captcha/url?process-id=${ARIO_TESTNET_PROCESS_ID}`,
+			`${apiUrl}/api/captcha/url?process-id=${TOKEN_ID}`,
 		);
 		assert.strictEqual(response.status, 200);
 		const data = await response.json();
-		assert.strictEqual(data.processId, ARIO_TESTNET_PROCESS_ID);
-		assert(
-			data.captchaUrl.includes(
-				`/captcha?process-id=${ARIO_TESTNET_PROCESS_ID}`,
-			),
-		);
+		assert.strictEqual(data.processId, TOKEN_ID);
+		assert(data.captchaUrl.includes(`/captcha?process-id=${TOKEN_ID}`));
 	});
 
-	it('returns an error when captcha is not solved', async () => {
+	it('returns an error when captcha is not solved (unsupported process)', async () => {
 		const response = await fetch(`${apiUrl}/api/captcha/verify`, {
 			method: 'POST',
 			headers: {
@@ -92,7 +110,7 @@ describe('faucet api', async () => {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				processId: ARIO_TESTNET_PROCESS_ID,
+				processId: TOKEN_ID,
 				captchaResponse: 'some-test-captcha-response',
 			}),
 		});
@@ -104,44 +122,41 @@ describe('faucet api', async () => {
 		assert(data.expiresAt > now + 1000 * 60 * 60); // 1 hour
 	});
 
-	it('should return valid when auth token is verified', async () => {
-		const now = Date.now();
-		const response = await fetch(`${apiUrl}/api/captcha/verify`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				processId: ARIO_TESTNET_PROCESS_ID,
-				captchaResponse: 'some-test-captcha-response',
-			}),
-		});
-		assert.strictEqual(response.status, 200);
-		const data = await response.json();
-		const verifyResponse = await fetch(
-			`${apiUrl}/api/token/verify?process-id=${ARIO_TESTNET_PROCESS_ID}`,
-			{
-				method: 'GET',
-				headers: {
-					Authorization: `Bearer ${data.token}`,
-				},
-			},
-		);
-		assert.strictEqual(verifyResponse.status, 200);
-		const verifyData = await verifyResponse.json();
-		assert(verifyData.valid);
-		assert(verifyData.expiresAt);
-		assert(verifyData.expiresAt > now + 1000 * 60 * 60); // 1 hour
-	});
-
-	it('should fail claiming tokens when recipient already has significant balance', async () => {
+	it('captcha-only token verifies as invalid for claiming (no githubId)', async () => {
 		const captchaResponse = await fetch(`${apiUrl}/api/captcha/verify`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				processId: ARIO_TESTNET_PROCESS_ID,
+				processId: TOKEN_ID,
+				captchaResponse: 'some-test-captcha-response',
+			}),
+		});
+		const captchaData = await captchaResponse.json();
+		const verifyResponse = await fetch(
+			`${apiUrl}/api/token/verify?process-id=${TOKEN_ID}`,
+			{
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${captchaData.token}`,
+				},
+			},
+		);
+		assert.strictEqual(verifyResponse.status, 200);
+		const verifyData = await verifyResponse.json();
+		// verifyAuthToken requires a githubId, so a captcha-only token is invalid
+		assert.strictEqual(verifyData.valid, false);
+	});
+
+	it('rejects a claim with an invalid Solana recipient address', async () => {
+		const captchaResponse = await fetch(`${apiUrl}/api/captcha/verify`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				processId: TOKEN_ID,
 				captchaResponse: 'some-test-captcha-response',
 			}),
 		});
@@ -153,19 +168,47 @@ describe('faucet api', async () => {
 				Authorization: `Bearer ${captchaData.token}`,
 			},
 			body: JSON.stringify({
-				processId: ARIO_TESTNET_PROCESS_ID,
-				recipient: ARIO_TESTNET_PROCESS_ID,
-				qty: 0,
+				processId: TOKEN_ID,
+				// contains invalid base58 chars (0, O, l) and spaces
+				recipient: 'not a valid solana address 0OIl',
+				qty: 1,
 			}),
 		});
+		// schema-level base58 validation rejects the recipient
 		assert.strictEqual(response.status, 400);
-		const data = await response.json();
-		assert(
-			data.error.includes(
-				`Recipient (${ARIO_TESTNET_PROCESS_ID}) already has more than the maximum quantity of tokens allowed (${10000000000}). Please try again later.`,
-			),
-		);
 	});
 
-	// TODO: nock request to mu.ao-testnet.xyz and cu.aot-testnet.xyz and verify the transfers happen on /api/claim/sync and /api/claim/async
+	it('rejects async claim with a captcha-only token (no github binding)', async () => {
+		const captchaResponse = await fetch(`${apiUrl}/api/captcha/verify`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				processId: TOKEN_ID,
+				captchaResponse: 'some-test-captcha-response',
+			}),
+		});
+		const captchaData = await captchaResponse.json();
+		const validRecipient = Keypair.generate().publicKey.toBase58();
+		const response = await fetch(`${apiUrl}/api/claim/async`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${captchaData.token}`,
+			},
+			body: JSON.stringify({
+				processId: TOKEN_ID,
+				recipient: validRecipient,
+				qty: 1,
+			}),
+		});
+		// captcha-only token has no githubId -> invalid for claiming
+		assert.strictEqual(response.status, 401);
+	});
+
+	// TODO: opt-in E2E happy-path transfer against a funded devnet faucet +
+	// created mint (assert recipient ATA balance increases by qty).
+	// TODO: nock-based integration tests for the GitHub OAuth callback flow
+	// (state/CSRF rejection, account-too-young, per-githubId anti-sybil).
 });

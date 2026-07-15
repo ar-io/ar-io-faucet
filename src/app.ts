@@ -37,8 +37,29 @@ const __dirname = path.dirname(__filename);
 
 const app = new Koa();
 
-// static files are not rate limited or logged
-app.use(cors());
+// Only trust X-Forwarded-For (and derive ctx.ip / ctx.request.secure from it)
+// when explicitly running behind a known reverse proxy. Otherwise Koa ignores
+// the header and ctx.ip is the real socket address, so a client can't spoof its
+// source IP to bypass rate limits or hCaptcha's remoteip check.
+app.proxy = config.TRUST_PROXY;
+
+// CORS: allow the configured frontend origin(s) to call the API WITH
+// credentials (the claim-token + session cookies). Credentialed CORS requires
+// echoing a specific origin (never "*"), so we reflect the request origin only
+// when it is in the allowlist.
+app.use(
+	cors({
+		origin: (ctx) => {
+			const requestOrigin = ctx.get('Origin');
+			return config.CORS_ALLOWED_ORIGINS.includes(requestOrigin)
+				? requestOrigin
+				: '';
+		},
+		credentials: true,
+		allowMethods: ['GET', 'POST', 'OPTIONS'],
+		allowHeaders: ['Content-Type', 'Authorization'],
+	}),
+);
 
 // enable simple front-end for testing
 if (config.ENABLE_SELF_HOSTED_FRONTEND) {
@@ -47,6 +68,8 @@ if (config.ENABLE_SELF_HOSTED_FRONTEND) {
 		await ctx.render('index', {
 			captchaSiteKey: config.CAPTCHA_SITE_KEY,
 			baseUrl: '',
+			tokenId: config.SOLANA_TOKEN_ID,
+			githubOAuthEnabled: config.GITHUB_OAUTH_ENABLED,
 		});
 	});
 	app.use(frontendRouter.routes());
