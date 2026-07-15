@@ -18,9 +18,9 @@
 import crypto from 'node:crypto';
 import rateLimit from 'koa-ratelimit';
 import Router from 'koa-router';
+import { performClaim } from './claim.js';
 import * as config from './config.js';
 import { BadRequestError } from './errors.js';
-import { SolanaTokenFaucet } from './faucet/solana-token-faucet.js';
 import {
 	captcha,
 	githubClaimStore,
@@ -315,7 +315,13 @@ router.post('/api/claim/async', async (ctx) => {
 		return;
 	}
 
-	await performClaim(ctx, faucet, payload, { recipient, qty });
+	await performClaim(
+		ctx,
+		faucet,
+		payload,
+		{ recipient, qty },
+		githubClaimStore,
+	);
 });
 
 // claim tokens to a recipient using a captcha response. When the GitHub gate is
@@ -369,7 +375,13 @@ router.post('/api/claim/sync', async (ctx) => {
 		payload = verified.payload;
 	}
 
-	await performClaim(ctx, faucet, payload, { recipient, qty });
+	await performClaim(
+		ctx,
+		faucet,
+		payload,
+		{ recipient, qty },
+		githubClaimStore,
+	);
 });
 
 export default router;
@@ -443,65 +455,5 @@ async function verifyAuthTokenSafe(
 		return await faucet.verifyAuthToken({ token });
 	} catch {
 		return { valid: false };
-	}
-}
-
-// shared claim execution.
-//
-// SECURITY (TOCTOU concurrent-replay drain): the per-JWT nonce is RESERVED
-// atomically and synchronously BEFORE the transfer is dispatched — never after.
-// reserveNonce() is a set-if-absent in a single critical section (has()+set()
-// with no await in between), so of N concurrent claims sharing the same JWT
-// exactly one wins the reservation and the rest are rejected before any tokens
-// move. The per-githubId anti-sybil slot is reserved earlier, at the OAuth
-// callback (the identity gate); here we re-check it as defense-in-depth (a valid
-// JWT should always correspond to a still-held slot). Only a DEFINITIVE transfer
-// failure rolls the nonce back (so a legitimate user can retry with the same
-// token before it expires); on success it stays burned.
-async function performClaim(
-	// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
-	ctx: any,
-	faucet: TokenFaucet,
-	payload: TokenPayload | undefined,
-	{ recipient, qty }: { recipient: string; qty: number },
-): Promise<void> {
-	const githubId = payload?.githubId;
-	const solanaFaucet = faucet as SolanaTokenFaucet;
-
-	// 1. per-githubId anti-sybil re-check. The slot was reserved at the OAuth
-	// callback; if it's gone the window rolled over — reject rather than transfer.
-	if (githubId !== undefined && !githubClaimStore.has(githubId)) {
-		ctx.status = 429;
-		ctx.body = {
-			error: 'Already claimed for this GitHub account this window',
-		};
-		return;
-	}
-
-	// 2. RESERVE (burn) the token nonce (atomic set-if-absent) BEFORE the
-	// transfer. If the nonce was already reserved/consumed, this is a replay —
-	// reject before any tokens move.
-	if (payload && !solanaFaucet.reserveNonce(payload)) {
-		ctx.status = 409;
-		ctx.body = { error: 'Token already used' };
-		return;
-	}
-
-	// 3. Dispatch the transfer. The nonce is now held, so no other concurrent
-	// request carrying the same token can also reach this point.
-	try {
-		const { id, status } = await faucet.claim({
-			recipient,
-			qty,
-			githubId,
-		});
-		ctx.body = { id, status };
-	} catch (error) {
-		// Definitive failure: roll back the nonce reservation so the user can
-		// retry with the same (still-valid) token.
-		if (payload) {
-			await solanaFaucet.releaseNonce(payload);
-		}
-		throw error;
 	}
 }

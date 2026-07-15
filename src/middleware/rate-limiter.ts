@@ -28,9 +28,13 @@ import * as config from '../config.js';
 // enabled we ignore the attacker-controllable XFF entirely and use the socket
 // address. As a defensive fallback (proxy trusted but ctx.ip empty) we parse the
 // FIRST comma-separated IP, not the first character.
+//
+// `trustProxy` is passed explicitly (defaulting to the config value) so this pure
+// key-derivation logic is unit-testable across both branches without mutating
+// process-wide config.
 // biome-ignore lint/suspicious/noExplicitAny: koa Context typing
-function clientId(ctx: any): string {
-	if (config.TRUST_PROXY) {
+export function clientId(ctx: any, trustProxy = config.TRUST_PROXY): string {
+	if (trustProxy) {
 		if (ctx.ip) {
 			return ctx.ip;
 		}
