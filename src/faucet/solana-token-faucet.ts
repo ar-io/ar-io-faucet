@@ -31,7 +31,7 @@ import {
 	sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import * as config from '../config.js';
-import { BadRequestError } from '../errors.js';
+import { BadRequestError, TransferSendError } from '../errors.js';
 import type { TokenCache, TokenFaucet, TokenPayload } from '../types.js';
 
 export class SolanaTokenFaucet implements TokenFaucet {
@@ -338,7 +338,16 @@ export class SolanaTokenFaucet implements TokenFaucet {
 			),
 		);
 
-		// 7. send + confirm
+		// 7. send + confirm.
+		//
+		// SECURITY (confirm-timeout double-claim): everything above this point is
+		// pre-broadcast validation and throws BadRequestError / balance Error — the
+		// nonce is safe to roll back for a retry. Once sendAndConfirmTransaction is
+		// invoked the transfer may have been BROADCAST; a thrown confirm/blockhash
+		// timeout does NOT prove the tx failed (on devnet it often LANDED anyway).
+		// We surface these as a typed TransferSendError so performClaim can treat
+		// the nonce as consumed instead of re-arming the JWT (which would enable a
+		// replay when the tx actually settled).
 		let signature: string;
 		try {
 			signature = await sendAndConfirmTransaction(
@@ -348,7 +357,7 @@ export class SolanaTokenFaucet implements TokenFaucet {
 				{ commitment: this.commitment },
 			);
 		} catch (error) {
-			throw new Error(
+			throw new TransferSendError(
 				`Failed to transfer tokens: ${
 					error instanceof Error ? error.message : String(error)
 				}`,

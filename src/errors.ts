@@ -21,3 +21,17 @@ export class BadRequestError extends Error {
 		this.name = 'BadRequestError';
 	}
 }
+
+// Thrown when a transfer has been BROADCAST but its confirmation failed (e.g. a
+// blockhash / confirm timeout from sendAndConfirmTransaction). On Solana devnet
+// these timeouts routinely fire even though the transaction actually LANDED
+// on-chain, so this error is post-broadcast and possibly-successful: the nonce
+// MUST be treated as consumed (never rolled back) to prevent a replay /
+// double-claim. Distinct from pre-broadcast validation errors (BadRequestError,
+// balance checks) which are safe to roll the nonce back for a retry.
+export class TransferSendError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'TransferSendError';
+	}
+}

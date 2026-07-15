@@ -72,6 +72,11 @@ export const SOLANA_COMMITMENT = process.env.SOLANA_COMMITMENT || 'confirmed';
 // auth token signing config (HS256 service JWT)
 export const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET;
 
+// Explicit dev profile. Must be opted into (DEV_PROFILE=true) to silence the
+// startup refusal when the GitHub OAuth anti-sybil gate is disabled. Never set
+// this in production.
+export const DEV_PROFILE = process.env.DEV_PROFILE === 'true';
+
 // github oauth config
 export const GITHUB_OAUTH_ENABLED =
 	process.env.GITHUB_OAUTH_ENABLED !== 'false';
@@ -162,6 +167,38 @@ export function assertRequiredConfig(): void {
 	if (missing.length > 0) {
 		throw new Error(
 			`Missing required environment variables: ${missing.join(', ')}`,
+		);
+	}
+
+	// (a) DEPLOYMENT FOOTGUN: disabling the GitHub OAuth gate drops the
+	// per-githubId anti-sybil slot and the session-bound nonce guarantees, so the
+	// faucet is trivially drainable. Refuse to boot unless an operator explicitly
+	// opts into a dev profile (DEV_PROFILE=true), in which case emit a loud warning.
+	if (!GITHUB_OAUTH_ENABLED) {
+		if (!DEV_PROFILE) {
+			throw new Error(
+				'GITHUB_OAUTH_ENABLED=false disables the anti-sybil / nonce guarantees and is refused in production. ' +
+					'Set DEV_PROFILE=true to run without the GitHub gate for local development only.',
+			);
+		}
+		// biome-ignore lint/suspicious/noConsole: startup guard runs before the logger
+		console.warn(
+			'[SECURITY WARNING] GITHUB_OAUTH_ENABLED=false: the GitHub anti-sybil gate is DISABLED. ' +
+				'Nonce/anti-sybil protections are dropped and the faucet is drainable. ' +
+				'This is only safe under an explicit dev profile (DEV_PROFILE=true). NEVER run this in production.',
+		);
+	}
+
+	// (b) DEPLOYMENT FOOTGUN: with TRUST_PROXY=true koa honours X-Forwarded-For for
+	// IP rate limiting. If the fronting proxy APPENDS to (rather than OVERWRITES)
+	// an attacker-supplied XFF, the client can spoof its source IP and bypass the
+	// per-IP rate limits. Warn loudly so operators verify their proxy config.
+	if (TRUST_PROXY) {
+		// biome-ignore lint/suspicious/noConsole: startup guard runs before the logger
+		console.warn(
+			'[SECURITY WARNING] TRUST_PROXY=true: X-Forwarded-For is trusted for IP rate limiting. ' +
+				'Ensure the fronting reverse proxy OVERWRITES (does not append to) X-Forwarded-For — ' +
+				'otherwise clients can spoof their source IP and bypass rate limits.',
 		);
 	}
 }

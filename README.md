@@ -164,6 +164,15 @@ SameSite=Lax cookie** scoped to `/api` (not a URL fragment), bound to the sessio
 that initiated the OAuth flow (a session id is carried in the OAuth `state` and
 embedded in the JWT, then matched against the `faucet_sid` cookie at claim time).
 
+> **Note:** Because GitHub-gated claim tokens are bound to the initiating
+> browser session (the `sid` in the JWT is matched against the `faucet_sid`
+> HttpOnly cookie), the browser OAuth flow and header-only API clients are
+> **mutually exclusive** for gated tokens: a JWT minted in the browser session
+> cannot be replayed from a bare `Authorization: Bearer` header without the
+> matching session cookie, and vice versa. This session binding is intentional
+> and must not be weakened — do not disable the `sid` check to make gated tokens
+> usable from header-only clients.
+
 When running behind a reverse proxy, set `TRUST_PROXY=true` so `X-Forwarded-For`
 is honored (via `ctx.ip`) for rate limiting and hCaptcha. When it is unset the
 header is ignored and the socket address is used, so clients cannot spoof their

@@ -41,6 +41,7 @@ import {
 	AccountLayout,
 	TOKEN_PROGRAM_ID,
 	getAssociatedTokenAddress,
+	getAssociatedTokenAddressSync,
 } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import jwt from 'jsonwebtoken';
@@ -289,6 +290,226 @@ describe('regression (1): concurrent double-claim on the same JWT', () => {
 		};
 		assert.strictEqual(faucet.reserveNonce(payload), true);
 		assert.strictEqual(faucet.reserveNonce(payload), false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// (1b) Confirm-timeout double-claim: a send/confirm failure is POST-broadcast
+//      (the tx may have landed on-chain), so the nonce must NOT be released — a
+//      subsequent claim reusing the same nonce/JWT is rejected. A PRE-broadcast
+//      validation error DOES release the nonce so a corrected retry can proceed.
+// ---------------------------------------------------------------------------
+describe('regression (1b): confirm-timeout must not release the nonce', () => {
+	function fundedAccountsSync(faucetKeypair: Keypair, mint: PublicKey) {
+		const recipient = Keypair.generate();
+		const faucetAta = getAssociatedTokenAddressSync(
+			mint,
+			faucetKeypair.publicKey,
+		).toBase58();
+		const recipientAta = getAssociatedTokenAddressSync(
+			mint,
+			recipient.publicKey,
+		).toBase58();
+		const accounts: AccountMap = new Map();
+		accounts.set(
+			faucetAta,
+			accountInfo(
+				encodeTokenAccount({
+					mint,
+					owner: faucetKeypair.publicKey,
+					amount: 10_000_000n,
+				}),
+			),
+		);
+		accounts.set(
+			recipientAta,
+			accountInfo(
+				encodeTokenAccount({ mint, owner: recipient.publicKey, amount: 0n }),
+			),
+		);
+		return { accounts, recipient: recipient.publicKey.toBase58() };
+	}
+
+	// Build a faucet whose Connection confirms transactions by REJECTING (mirrors
+	// sendAndConfirmTransaction throwing on a blockhash/confirm timeout even though
+	// the tx may have landed on-chain).
+	function buildFaucetConfirmTimeout({
+		accounts,
+		faucetKeypair,
+		mint,
+		cache,
+	}: {
+		accounts: AccountMap;
+		faucetKeypair: Keypair;
+		mint: PublicKey;
+		cache: ConstructorParameters<typeof SolanaTokenFaucet>[0]['cache'];
+	}) {
+		const sendTransaction = mock.fn(
+			// biome-ignore lint/suspicious/noExplicitAny: transaction arg typed loosely
+			async (_transaction: any, _signers?: any, _opts?: any) =>
+				'MOCK_SIGNATURE_11111111111111',
+		);
+		const confirmTransaction = mock.fn(
+			// biome-ignore lint/suspicious/noExplicitAny: web3 confirm arg
+			async (_arg?: any, _commitment?: any): Promise<{ value: unknown }> => {
+				throw new Error(
+					'Transaction was not confirmed in 30.00 seconds. It is unknown if it succeeded or failed.',
+				);
+			},
+		);
+		const connection = {
+			async getAccountInfo(address: PublicKey) {
+				return accounts.get(address.toBase58()) ?? null;
+			},
+			sendTransaction,
+			confirmTransaction,
+		};
+		const faucet = new SolanaTokenFaucet({
+			cache,
+			// biome-ignore lint/suspicious/noExplicitAny: mock connection
+			connection: connection as any,
+			faucetKeypair,
+			mint,
+			decimals: DECIMALS,
+			tokenId: 'solana-devnet',
+			authTokenSigner: { sign: () => 'tok', verify: () => ({}) },
+			authTokenSecret: 'test-secret',
+			commitment: 'confirmed',
+			maxQty: 1_000_000,
+			minQty: 100,
+			defaultQty: 500,
+		});
+		return { faucet, sendTransaction };
+	}
+
+	it('(a) does NOT release the nonce on a send/confirm timeout; a retry with the same nonce is rejected (no second transfer)', async () => {
+		const faucetKeypair = Keypair.generate();
+		const mint = Keypair.generate().publicKey;
+		const { accounts, recipient } = fundedAccountsSync(faucetKeypair, mint);
+
+		const cache = new NodeTokenCache({ ttlSeconds: 3600 });
+		const { faucet, sendTransaction } = buildFaucetConfirmTimeout({
+			accounts,
+			faucetKeypair,
+			mint,
+			cache,
+		});
+
+		const payload: TokenPayload = {
+			issuer: faucetKeypair.publicKey.toBase58(),
+			processId: 'solana-devnet',
+			iat: Math.floor(Date.now() / 1000),
+			exp: Math.floor(Date.now() / 1000) + 3600,
+			nonce: 'confirm-timeout-nonce',
+			githubId: 4242,
+		};
+
+		// First claim: transfer is broadcast, confirmation times out.
+		const ctx1 = makeCtx();
+		await performClaim(
+			ctx1,
+			faucet,
+			payload,
+			{ recipient, qty: 500 },
+			githubStoreAlwaysHeld,
+		);
+
+		// Surfaced as a distinct pending/unknown status, NOT a hard failure.
+		assert.strictEqual(ctx1.status, 202, 'timeout is surfaced as pending (202)');
+		assert.strictEqual(ctx1.body.status, 'pending');
+		assert.strictEqual(
+			sendTransaction.mock.callCount(),
+			1,
+			'the transfer was broadcast exactly once',
+		);
+
+		// The nonce must still be burned: a retry with the SAME token is a replay.
+		const ctx2 = makeCtx();
+		await performClaim(
+			ctx2,
+			faucet,
+			payload,
+			{ recipient, qty: 500 },
+			githubStoreAlwaysHeld,
+		);
+
+		assert.strictEqual(
+			ctx2.status,
+			409,
+			'a replay of the same nonce after a confirm timeout is rejected',
+		);
+		assert.deepStrictEqual(ctx2.body, { error: 'Token already used' });
+		assert.strictEqual(
+			sendTransaction.mock.callCount(),
+			1,
+			'no SECOND on-chain transfer is dispatched after a confirm timeout',
+		);
+	});
+
+	it('(b) DOES release the nonce on a pre-broadcast validation error, so a corrected retry can proceed', async () => {
+		const faucetKeypair = Keypair.generate();
+		const mint = Keypair.generate().publicKey;
+		const { accounts, recipient } = fundedAccountsSync(faucetKeypair, mint);
+
+		const cache = new NodeTokenCache({ ttlSeconds: 3600 });
+		// Happy-path connection (send + confirm both succeed) so the corrected
+		// retry actually lands.
+		const { faucet, sendTransaction } = buildFaucet({
+			accounts,
+			faucetKeypair,
+			mint,
+			cache,
+		});
+
+		const payload: TokenPayload = {
+			issuer: faucetKeypair.publicKey.toBase58(),
+			processId: 'solana-devnet',
+			iat: Math.floor(Date.now() / 1000),
+			exp: Math.floor(Date.now() / 1000) + 3600,
+			nonce: 'prebroadcast-error-nonce',
+			githubId: 4242,
+		};
+
+		// First claim: pre-broadcast validation error (recipient is not a valid
+		// Solana address). This is thrown as BadRequestError before any broadcast.
+		const ctx1 = makeCtx();
+		await assert.rejects(
+			() =>
+				performClaim(
+					ctx1,
+					faucet,
+					payload,
+					{ recipient: 'not-a-valid-address', qty: 500 },
+					githubStoreAlwaysHeld,
+				),
+			/Invalid Solana recipient address/,
+		);
+		assert.strictEqual(
+			sendTransaction.mock.callCount(),
+			0,
+			'a pre-broadcast validation error never dispatches a transfer',
+		);
+
+		// The nonce was released, so a corrected retry with the SAME token proceeds.
+		const ctx2 = makeCtx();
+		await performClaim(
+			ctx2,
+			faucet,
+			payload,
+			{ recipient, qty: 500 },
+			githubStoreAlwaysHeld,
+		);
+
+		assert.strictEqual(
+			ctx2.body?.status,
+			'success',
+			'a corrected retry with the same token succeeds after the nonce is released',
+		);
+		assert.strictEqual(
+			sendTransaction.mock.callCount(),
+			1,
+			'the corrected retry dispatches exactly one transfer',
+		);
 	});
 });
 

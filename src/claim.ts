@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+import { TransferSendError } from './errors.js';
 import type { SolanaTokenFaucet } from './faucet/solana-token-faucet.js';
 import type { TokenFaucet, TokenPayload } from './types.js';
 
@@ -35,9 +36,17 @@ export interface ClaimGithubStore {
 // exactly one wins the reservation and the rest are rejected before any tokens
 // move. The per-githubId anti-sybil slot is reserved earlier, at the OAuth
 // callback (the identity gate); here we re-check it as defense-in-depth (a valid
-// JWT should always correspond to a still-held slot). Only a DEFINITIVE transfer
-// failure rolls the nonce back (so a legitimate user can retry with the same
-// token before it expires); on success it stays burned.
+// JWT should always correspond to a still-held slot).
+//
+// SECURITY (confirm-timeout double-claim): the nonce is rolled back ONLY for a
+// provably PRE-BROADCAST failure (BadRequestError / balance / bounds, thrown
+// before sendAndConfirmTransaction), so a legitimate user can retry with the
+// same token before it expires. A POST-BROADCAST send/confirm failure
+// (TransferSendError) is NOT rolled back: on Solana devnet a confirm/blockhash
+// timeout routinely fires even though the transfer LANDED on-chain, so releasing
+// the nonce would re-arm the JWT and enable a replay/double-claim. Such a claim
+// is surfaced to the caller as a distinct `pending` status. On success the nonce
+// stays burned.
 export async function performClaim(
 	// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
 	ctx: any,
@@ -78,8 +87,23 @@ export async function performClaim(
 		});
 		ctx.body = { id, status };
 	} catch (error) {
-		// Definitive failure: roll back the nonce reservation so the user can
-		// retry with the same (still-valid) token.
+		// POST-BROADCAST failure (send/confirm timeout): the transfer may have
+		// LANDED on-chain, so the token is treated as CONSUMED — do NOT release the
+		// nonce (that would re-arm the JWT and enable a replay/double-claim).
+		// Surface a distinct pending/unknown status instead of a hard failure.
+		if (error instanceof TransferSendError) {
+			ctx.status = 202;
+			ctx.body = {
+				status: 'pending',
+				error:
+					'Transfer was submitted but could not be confirmed in time. It may still settle on-chain; this claim token cannot be reused.',
+			};
+			return;
+		}
+
+		// PRE-BROADCAST failure (validation / balance / bounds): no tokens moved,
+		// so roll back the nonce reservation and let the user retry with the same
+		// (still-valid) token.
 		if (payload) {
 			await solanaFaucet.releaseNonce(payload);
 		}
