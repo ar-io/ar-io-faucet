@@ -115,7 +115,10 @@ export const ClaimRequestSchema = z.object({
 	processId: z.string().min(1, 'Process ID is required'),
 	recipient: SolanaAddressSchema,
 	qty: QtySchema,
-	captchaResponse: z.string().min(1, 'Captcha response is required'),
+	// Only meaningful when REQUIRE_CAPTCHA_VERIFICATION=true. In GitHub-OAuth-only
+	// mode (captcha disabled) the field may be omitted; the handler still enforces
+	// captcha when it's enabled.
+	captchaResponse: z.string().min(1).optional(),
 });
 
 export const AsyncClaimRequestSchema = z.object({

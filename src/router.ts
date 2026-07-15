@@ -336,6 +336,9 @@ router.post('/api/claim/sync', async (ctx) => {
 	const { recipient, qty, processId, captchaResponse } = claimRequest.data;
 
 	if (config.REQUIRE_CAPTCHA_VERIFICATION && captcha) {
+		if (!captchaResponse) {
+			throw new BadRequestError('Captcha response is required');
+		}
 		const captchaResult = await captcha.verifyCaptchaResponse({
 			captchaResponse,
 			remoteip: ctx.ip,
