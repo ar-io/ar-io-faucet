@@ -15,6 +15,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+// MANUAL / opt-in suite (`yarn test:e2e`) — NOT run in CI. It builds and runs the
+// Docker image (needs a Docker runtime) AND the token-issuance path requires a
+// FUNDED faucet wallet on a real Solana network (the ported code balance-checks
+// before issuing a claim token). CI runs `yarn test` = `test:unit` (mocked,
+// hermetic). Run this locally against a funded devnet wallet + real mint.
 import assert from 'node:assert';
 import { after, before, describe, it } from 'node:test';
 import { Keypair } from '@solana/web3.js';
@@ -49,8 +54,10 @@ describe('faucet api', async () => {
 				SOLANA_TOKEN_DECIMALS: '6',
 				SOLANA_FAUCET_SECRET_KEY: FAUCET_SECRET_KEY,
 				AUTH_TOKEN_SECRET,
-				// disable the github gate for the non-oauth tests
+				// disable the github gate for the non-oauth tests; DEV_PROFILE opts
+				// past the startup guard that refuses to boot with the gate off
 				GITHUB_OAUTH_ENABLED: 'false',
+				DEV_PROFILE: 'true',
 			})
 			.start();
 
