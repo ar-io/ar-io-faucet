@@ -60,8 +60,9 @@
 		"lint:check": "biome check --unsafe && eslint src",
 		"format:fix": "biome format --write",
 		"format:check": "biome format",
-		"test": "yarn test:e2e",
-		"test:e2e": "node --import ./register.mjs --test-reporter=spec --test-concurrency 1 --test tests/**/**.test.ts",
+		"test": "yarn test:unit && yarn test:e2e",
+		"test:unit": "node --import ./register.mjs --test-reporter=spec --test-concurrency 1 --test tests/unit/**/*.test.ts",
+		"test:e2e": "node --import ./register.mjs --test-reporter=spec --test-concurrency 1 --test tests/e2e/**/*.test.ts",
 		"prepare": "simple-git-hooks",
 		"render": "node -r dotenv/config render.mjs"
 	},
