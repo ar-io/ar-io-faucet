@@ -70,7 +70,7 @@
         .brand { margin-bottom: 30px; }
         .brand img { height: 32px; width: auto; display: block; }
 
-        header { text-align: center; margin-bottom: 26px; max-width: 500px; }
+        header { text-align: center; margin-bottom: 26px; max-width: 560px; }
         .eyebrow {
             display: inline-flex; align-items: center; gap: 7px;
             font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
@@ -85,13 +85,13 @@
             font-weight: 800; font-size: 2.5rem; line-height: 1.08;
             letter-spacing: -0.015em; margin: 0 0 12px; color: var(--black);
         }
-        header p { font-size: 0.98rem; line-height: 1.55; color: var(--body-gray); margin: 0 auto; max-width: 400px; }
+        header p { font-size: 0.98rem; line-height: 1.55; color: var(--body-gray); margin: 0 auto; max-width: 460px; }
         header a { color: var(--primary); text-decoration: none; font-weight: 600; }
         header a:hover { text-decoration: underline; }
 
         .card {
             position: relative;
-            width: 100%; max-width: 468px;
+            width: 100%; max-width: 560px;
             background: var(--white);
             border: 1px solid var(--border);
             border-radius: 22px;
@@ -213,7 +213,7 @@
         .wn-links a:hover { text-decoration: underline; }
 
         .endpoints {
-            width: 100%; max-width: 468px; margin-top: 18px;
+            width: 100%; max-width: 560px; margin-top: 18px;
             background: var(--white); border: 1px solid var(--border);
             border-radius: 16px; padding: 18px 22px;
         }
@@ -229,8 +229,8 @@
         .endpoints li a:hover { text-decoration: underline; }
         .ids-divider { height: 1px; background: var(--border); margin: 16px 0; }
         .ids { display: flex; flex-direction: column; gap: 9px; }
-        .id-row { display: flex; flex-direction: column; gap: 3px; }
-        .id-row > span { font-size: 0.74rem; font-weight: 700; color: var(--body-gray); }
+        .id-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+        .id-row > span { font-size: 0.76rem; font-weight: 700; color: var(--body-gray); white-space: nowrap; flex-shrink: 0; }
         .id-val {
             font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace; font-size: 0.73rem;
             color: var(--black); background: var(--warm-neutral); border: 1px solid var(--border);
@@ -248,10 +248,11 @@
         footer .copy a { color: #9a97a8; }
         footer .copy a:hover { color: var(--primary); }
 
-        @media (max-width: 500px) {
+        @media (max-width: 560px) {
             body { padding: 32px 16px 28px; }
             header h1 { font-size: 2rem; }
             .card { padding: 24px 20px; }
+            .id-row { flex-direction: column; align-items: flex-start; gap: 4px; }
         }
     </style>
 </head>
