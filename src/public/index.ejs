@@ -227,6 +227,17 @@
             font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem;
         }
         .endpoints li a:hover { text-decoration: underline; }
+        .ids-divider { height: 1px; background: var(--border); margin: 16px 0; }
+        .ids { display: flex; flex-direction: column; gap: 9px; }
+        .id-row { display: flex; flex-direction: column; gap: 3px; }
+        .id-row > span { font-size: 0.74rem; font-weight: 700; color: var(--body-gray); }
+        .id-val {
+            font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace; font-size: 0.73rem;
+            color: var(--black); background: var(--warm-neutral); border: 1px solid var(--border);
+            border-radius: 7px; padding: 5px 8px; word-break: break-all; cursor: pointer; transition: border-color 0.15s;
+        }
+        .id-val:hover { border-color: var(--dark-accent-lavender); }
+        .id-val.copied::after { content: ' ✓ copied'; color: var(--success); font-weight: 700; white-space: nowrap; }
 
         footer { margin-top: 30px; font-size: 0.8rem; color: var(--muted); text-align: center; }
         footer .links { margin-bottom: 8px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 0; }
@@ -355,6 +366,18 @@
             <li><span>Payment API</span><a href="https://payment.services.ar-io.dev" target="_blank" rel="noopener">payment.services.ar-io.dev</a></li>
             <li><span>Gateway</span><a href="https://ar-io.dev" target="_blank" rel="noopener">ar-io.dev</a></li>
         </ul>
+
+        <div class="ids-divider"></div>
+
+        <p class="endpoints-title">Solana devnet program &amp; mint IDs</p>
+        <p class="endpoints-sub">Click any ID to copy.</p>
+        <div class="ids">
+            <div class="id-row"><span>ARIO mint</span><code class="id-val" title="Click to copy">6vTw5CysRXQ4ybbHkDUiisHWVsBeMtUzYvJqs2iqHyaN</code></div>
+            <div class="id-row"><span>ario-core program</span><code class="id-val" title="Click to copy">8Njx9wPkXiNzDCgjwVsJFRjpAEV34gGW3n8DzX3V23m1</code></div>
+            <div class="id-row"><span>ario-gar program</span><code class="id-val" title="Click to copy">7WsDTrtZBsfKtnP33XkjuqXCY69JE7n4QVYpynqJCFxz</code></div>
+            <div class="id-row"><span>ario-arns program</span><code class="id-val" title="Click to copy">6EZNezcg4rc5hnh8HG34vGquT3WpW5xXypzPb24uyEpp</code></div>
+            <div class="id-row"><span>ario-ant program</span><code class="id-val" title="Click to copy">DbHbRwUD1oAn1mrDSqtWtvwGcNrmhWdD2g8L4xmeQ7NX</code></div>
+        </div>
     </section>
 
     <footer>
@@ -542,6 +565,16 @@
                 setTimeout(() => { this.textContent = 'Copy to clipboard'; }, 2000);
             });
         }.bind(document.getElementById('copyToken')));
+
+        // Click-to-copy the Solana program/mint IDs
+        document.querySelectorAll('.id-val').forEach(function (el) {
+            el.addEventListener('click', function () {
+                navigator.clipboard.writeText(el.textContent.trim()).then(function () {
+                    el.classList.add('copied');
+                    setTimeout(function () { el.classList.remove('copied'); }, 1200);
+                });
+            });
+        });
     </script>
 </body>
 </html>
