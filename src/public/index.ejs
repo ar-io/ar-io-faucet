@@ -2,176 +2,342 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="https://network-portal.app/ario.svg" type="image/svg+xml">
+    <link rel="icon" href="https://ar.io/brand/ario-black.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Request test tokens for the AR.IO Testnet">
+    <meta name="description" content="Request test tokens for the ar.io Testnet">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="AR.IO Testnet Faucet">
-    <meta name="twitter:description" content="Request test tokens for the AR.IO Testnet">
-    <meta name="twitter:image" content="https://res.cloudinary.com/donw16xff/image/upload/v1666927508/k.jpg">
+    <meta name="twitter:title" content="ar.io Testnet Faucet">
+    <meta name="twitter:description" content="Request test tokens for the ar.io Testnet">
+    <meta name="twitter:image" content="https://ar.io/brand/ario-black-on-white-square.png">
     <meta name="twitter:url" content="https://faucet.ar.io">
-    <meta property="og:image" content="https://res.cloudinary.com/donw16xff/image/upload/v1666927508/k.jpgg">
-    <meta property="og:title" content="AR.IO Testnet Faucet">
-    <meta property="og:description" content="Request test tokens for the AR.IO Testnet">
+    <meta property="og:image" content="https://ar.io/brand/ario-black-on-white-square.png">
+    <meta property="og:title" content="ar.io Testnet Faucet">
+    <meta property="og:description" content="Request test tokens for the ar.io Testnet">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://faucet.ar.io">
-    <meta property="url" content="https://faucet.ar.io">
-    <title>AR.IO Testnet Faucet</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ar.io Testnet Faucet</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Besley:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <% if (captchaSiteKey) { %>
     <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
-     <script>
-      // Enable dark mode via class strategy
-      tailwind.config = {
-        darkMode: 'class',
-      };
-    </script>
-</head>
-<body class="bg-transparent min-h-screen dark:bg-black transition-colors duration-200">
-    <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-end mb-2">
-            <button id="themeToggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700">
-                <svg id="lightIcon" class="w-6 h-6 text-gray-800 dark:text-gray-200 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                <svg id="darkIcon" class="w-6 h-6 text-gray-800 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-            </button>
-        </div>
+    <% } %>
 
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-center text-black dark:text-white">AR.IO Testnet Faucet</h1>
-            <p class="text-center max-w-md mx-auto text-gray-600 dark:text-gray-400 mt-2">Request tokens for the AR.IO Testnet. Restrictions apply. Refer to <a href="https://docs.ar.io/guides/testnet" class="underline hover:text-gray-900 dark:hover:text-gray-100">docs.ar.io</a> for more information.</p>
-        </header>
-
-        <main class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-            <form id="tokenRequestForm" class="space-y-4">
-                <div>
-                    <label for="recipient" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Solana Wallet Address (base58)</label>
-                    <input type="text" id="recipient" name="recipient" required minlength="32" maxlength="44" pattern="^[1-9A-HJ-NP-Za-km-z]+$"
-                        title="Must be a valid base58 Solana address (32-44 characters)"
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
-                </div>
-
-                <div>
-                    <label for="processId" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Token</label>
-                    <select id="processId" name="processId" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
-                        <option value="<%= tokenId %>"><%= tokenId %></option>
-                    </select>
-                </div>
-
-                <div id="githubGate" class="hidden">
-                    <a id="githubLoginLink" href="#"
-                        class="w-full inline-flex justify-center items-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-black dark:text-white bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600">
-                        Sign in with GitHub
-                    </a>
-                    <p id="githubStatus" class="mt-2 text-xs text-gray-600 dark:text-gray-400">A GitHub sign-in is required before claiming.</p>
-                </div>
-
-                <div>
-                    <label for="qty" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity (max 10,000)</label>
-                    <input type="number" id="qty" name="qty" min="1" max="10000" value="10000" required
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white dark:bg-gray-700 dark:text-white">
-                </div>
-
-                <div class="captcha-container">
-                    <label for="captcha" class="block text-sm text-left font-medium text-gray-700 dark:text-gray-300">Captcha</label>
-                    <div class="h-captcha py-4 flex justify-center" data-sitekey="<%= captchaSiteKey %>" data-size="normal" data-theme="light"></div>
-                </div>
-
-                <div>
-                    <button type="submit" id="submitButton"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black dark:bg-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black dark:focus:ring-white">
-                        <span id="buttonText">Request Tokens</span>
-                        <svg id="loadingSpinner" class="animate-spin ml-2 h-5 w-5 text-white dark:text-black hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </button>
-                </div>
-            </form>
-
-            <div id="resultContainer" class="mt-6 hidden">
-                <div class="p-4 bg-green-100 dark:bg-green-900 rounded-md">
-                    <h3 class="text-lg font-medium text-green-800 dark:text-green-200">Token Request Successful</h3>
-                    <div class="mt-2">
-                        <p class="text-sm text-green-700 dark:text-green-300">Transfer ID:</p>
-                        <p id="tokenResult" class="mt-1 text-xs font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded break-all dark:text-white"></p>
-                    </div>
-                    <div class="mt-2">
-                        <button id="copyToken" class="text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200">Copy to clipboard</button>
-                    </div>
-                    <div class="mt-2">
-                        <a id="aoExplorerLink" href="#" target="_blank" class="mt-1 text-sm text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200 underline break-all">View on Solana Explorer</a>
-                    </div>
-                </div>
-            </div>
-
-            <div id="errorContainer" class="mt-6 hidden">
-                <div class="p-4 bg-red-100 dark:bg-red-900 rounded-md">
-                    <h3 class="text-lg font-medium text-red-800 dark:text-red-200">Error</h3>
-                    <p id="errorMessage" class="mt-2 text-sm text-red-700 dark:text-red-300 break-all"></p>
-                </div>
-            </div>
-        </main>
-        <footer class="text-center text-sm text-gray-600 dark:text-gray-400 mt-8">
-        <p>&copy; 2025 <a href="https://ar.io" class="hover:text-gray-800 dark:hover:text-gray-200">AR.IO</a>. All rights reserved.</p>
-        </footer>
-    </div>
-
-    <script>
-        // Theme toggle functionality
-        const themeToggle = document.getElementById('themeToggle');
-        const lightIcon = document.getElementById('lightIcon');
-        const darkIcon = document.getElementById('darkIcon');
-
-        // Check for saved theme preference, default to light mode
-        if (localStorage.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-            lightIcon.classList.remove('hidden');
-            darkIcon.classList.add('hidden');
-        } else {
-            document.documentElement.classList.remove('dark');
-            lightIcon.classList.add('hidden');
-            darkIcon.classList.remove('hidden');
+    <style>
+        :root {
+            --primary: #5427C8;
+            --primary-deep: #45209f;
+            --lavender: #DFD6F7;
+            --lavender-wash: #f1ecff;
+            --dark-accent-lavender: #D4C6FF;
+            --black: #23232D;
+            --white: #FFFFFF;
+            --card: #F0F0F0;
+            --warm-neutral: #F6F4EF;
+            --body-gray: #4A4A58;
+            --muted: #6f6c7d;
+            --border: #E6E4EF;
+            --success: #1F8A5B;
+            --success-bg: #E8F6EF;
+            --success-border: #BFE6D2;
+            --error: #C0392B;
+            --error-bg: #FBEBE9;
+            --error-border: #F3C9C4;
+            --shadow-primary: rgba(84, 39, 200, 0.28);
         }
 
-        themeToggle.addEventListener('click', function() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-                lightIcon.classList.add('hidden');
-                darkIcon.classList.remove('hidden');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-                lightIcon.classList.remove('hidden');
-                darkIcon.classList.add('hidden');
-            }
-        });
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
 
-        // GitHub OAuth gate wiring
+        body {
+            min-height: 100vh;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--black);
+            background:
+                radial-gradient(1100px 560px at 12% -12%, #f3eeff 0%, rgba(243,238,255,0) 60%),
+                radial-gradient(1000px 520px at 104% -8%, #e9deff 0%, rgba(233,222,255,0) 55%),
+                linear-gradient(180deg, var(--warm-neutral) 0%, #ECE4FB 55%, var(--lavender) 100%);
+            background-attachment: fixed;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 44px 20px 36px;
+        }
+
+        .brand { margin-bottom: 30px; }
+        .brand img { height: 32px; width: auto; display: block; }
+
+        header { text-align: center; margin-bottom: 26px; max-width: 500px; }
+        .eyebrow {
+            display: inline-flex; align-items: center; gap: 7px;
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+            color: var(--primary);
+            background: var(--lavender-wash);
+            border: 1px solid var(--dark-accent-lavender);
+            padding: 5px 12px; border-radius: 999px; margin-bottom: 18px;
+        }
+        .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+        header h1 {
+            font-family: 'Besley', Georgia, serif;
+            font-weight: 800; font-size: 2.5rem; line-height: 1.08;
+            letter-spacing: -0.015em; margin: 0 0 12px; color: var(--black);
+        }
+        header p { font-size: 0.98rem; line-height: 1.55; color: var(--body-gray); margin: 0 auto; max-width: 400px; }
+        header a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        header a:hover { text-decoration: underline; }
+
+        .card {
+            position: relative;
+            width: 100%; max-width: 468px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: 0 32px 64px -34px rgba(35, 35, 45, 0.30), 0 2px 8px rgba(35, 35, 45, 0.04);
+            padding: 32px 30px;
+            overflow: hidden;
+        }
+        .card::before {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+            background: linear-gradient(90deg, var(--primary) 0%, #7c56e0 50%, var(--dark-accent-lavender) 100%);
+        }
+
+        form { display: flex; flex-direction: column; gap: 19px; }
+
+        label {
+            display: block; font-size: 0.82rem; font-weight: 600;
+            color: var(--black); margin-bottom: 8px; letter-spacing: 0.005em;
+        }
+
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 12px 14px;
+            font-family: inherit; font-size: 0.95rem; color: var(--black);
+            background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        input::placeholder { color: #a6a3b3; }
+        input:focus, select:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3.5px rgba(84, 39, 200, 0.16);
+        }
+
+        .token-field { position: relative; }
+        .token-field img {
+            position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+            height: 21px; width: 21px; pointer-events: none;
+        }
+        .token-field select { padding-left: 42px; appearance: none; -webkit-appearance: none; cursor: pointer; }
+        .token-field .chev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
+
+        .github-gate {
+            background: linear-gradient(150deg, var(--warm-neutral) 0%, var(--lavender-wash) 100%);
+            border: 1px solid var(--border); border-radius: 14px; padding: 16px;
+        }
+        .github-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%;
+            padding: 12px 16px; font-family: inherit; font-size: 0.92rem; font-weight: 600;
+            color: var(--white); background: var(--black); border-radius: 11px; text-decoration: none;
+            transition: background 0.15s, transform 0.05s;
+        }
+        .github-btn:hover { background: #34343f; }
+        .github-btn:active { transform: translateY(1px); }
+        .github-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        .github-status { display: flex; align-items: center; gap: 6px; margin: 11px 0 0; font-size: 0.78rem; color: var(--muted); }
+        .github-status svg { width: 13px; height: 13px; flex-shrink: 0; }
+        .github-status.done { color: var(--success); font-weight: 600; }
+
+        .h-captcha { margin-top: 4px; display: flex; justify-content: center; }
+
+        .submit-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+            padding: 14px 16px; margin-top: 4px;
+            font-family: inherit; font-size: 0.98rem; font-weight: 700; color: var(--white);
+            background: linear-gradient(180deg, #5f34d2 0%, var(--primary-deep) 100%);
+            border: none; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 12px 26px -10px var(--shadow-primary);
+            transition: transform 0.06s, box-shadow 0.15s, filter 0.15s;
+        }
+        .submit-btn:hover { filter: brightness(1.06); box-shadow: 0 16px 30px -10px var(--shadow-primary); }
+        .submit-btn:active { transform: translateY(1px); }
+        .submit-btn:disabled { opacity: 0.65; cursor: not-allowed; box-shadow: none; filter: none; }
+
+        .spinner { animation: spin 0.8s linear infinite; width: 18px; height: 18px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+
+        .result, .error-box { margin-top: 22px; padding: 18px; border-radius: 14px; }
+        .result { background: var(--success-bg); border: 1px solid var(--success-border); }
+        .result h3 { margin: 0 0 4px; font-size: 1rem; color: var(--success); font-weight: 700; }
+        .error-box { background: var(--error-bg); border: 1px solid var(--error-border); }
+        .error-box h3 { margin: 0 0 6px; font-size: 1rem; color: var(--error); font-weight: 700; }
+        .result p, .error-box p { margin: 6px 0; font-size: 0.85rem; color: var(--body-gray); }
+        .mono {
+            font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem;
+            background: var(--white); border: 1px solid var(--border); padding: 9px; border-radius: 8px;
+            word-break: break-all; color: var(--black);
+        }
+        .link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 0.82rem; font-weight: 600; color: var(--primary); }
+        .link-btn:hover { text-decoration: underline; }
+        .result a { color: var(--primary); font-weight: 600; font-size: 0.82rem; word-break: break-all; }
+
+        .whats-next { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--success-border); }
+        .wn-title { margin: 0 0 10px; font-size: 0.9rem; font-weight: 700; color: var(--black); }
+        .result a.wn-primary {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+            padding: 11px 16px; font-size: 0.9rem; font-weight: 700; color: var(--white);
+            background: linear-gradient(180deg, #5f34d2 0%, var(--primary-deep) 100%);
+            border-radius: 11px; text-decoration: none;
+            box-shadow: 0 10px 22px -10px var(--shadow-primary);
+            transition: filter 0.15s, transform 0.06s;
+        }
+        .result a.wn-primary:hover { filter: brightness(1.06); text-decoration: none; }
+        .result a.wn-primary:active { transform: translateY(1px); }
+        .wn-hint { margin: 9px 0 0; font-size: 0.78rem; color: var(--body-gray); }
+        .wn-links { margin: 13px 0 0; display: flex; flex-wrap: wrap; gap: 7px 16px; }
+        .wn-links a { font-size: 0.82rem; font-weight: 600; color: var(--primary); text-decoration: none; }
+        .wn-links a:hover { text-decoration: underline; }
+
+        footer { margin-top: 30px; font-size: 0.8rem; color: var(--muted); text-align: center; }
+        footer .links { margin-bottom: 8px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 0; }
+        footer a { color: var(--body-gray); text-decoration: none; font-weight: 600; }
+        footer a:hover { color: var(--primary); }
+        footer .sep { margin: 0 9px; color: var(--dark-accent-lavender); }
+        footer .copy { color: #9a97a8; margin-top: 2px; }
+        footer .copy a { color: #9a97a8; }
+        footer .copy a:hover { color: var(--primary); }
+
+        @media (max-width: 500px) {
+            body { padding: 32px 16px 28px; }
+            header h1 { font-size: 2rem; }
+            .card { padding: 24px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="brand">
+        <img src="https://ar.io/brand/ario-full-black.svg" alt="ar.io" />
+    </div>
+
+    <header>
+        <span class="eyebrow"><span class="dot"></span>Solana Devnet</span>
+        <h1>Testnet Faucet</h1>
+        <p>Request tokens for the ar.io Testnet. Restrictions apply &mdash; see <a href="https://docs.ar.io" target="_blank" rel="noopener">docs.ar.io</a> for details.</p>
+    </header>
+
+    <main class="card">
+        <form id="tokenRequestForm">
+            <div>
+                <label for="recipient">Solana Wallet Address (base58)</label>
+                <input type="text" id="recipient" name="recipient" required minlength="32" maxlength="44"
+                    pattern="^[1-9A-HJ-NP-Za-km-z]+$" placeholder="Enter a Solana devnet address"
+                    title="Must be a valid base58 Solana address (32-44 characters)">
+            </div>
+
+            <div>
+                <label for="processId">Token</label>
+                <div class="token-field">
+                    <img src="https://ar.io/brand/ario-token-logo.svg" alt="ARIO" />
+                    <select id="processId" name="processId" required>
+                        <option value="<%= tokenId %>"><%= tokenId %></option>
+                    </select>
+                    <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+            </div>
+
+            <div id="githubGate" class="github-gate hidden">
+                <a id="githubLoginLink" href="#" class="github-btn">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A10.52 10.52 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/></svg>
+                    Sign in with GitHub
+                </a>
+                <p id="githubStatus" class="github-status">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    A GitHub sign-in (account 30+ days old) is required before claiming.
+                </p>
+            </div>
+
+            <div>
+                <label for="qty">Quantity (max 10,000)</label>
+                <input type="number" id="qty" name="qty" min="1" max="10000" value="10000" required>
+            </div>
+
+            <% if (captchaSiteKey) { %>
+            <div>
+                <label>Captcha</label>
+                <div class="h-captcha" data-sitekey="<%= captchaSiteKey %>" data-size="normal" data-theme="light"></div>
+            </div>
+            <% } %>
+
+            <button type="submit" id="submitButton" class="submit-btn">
+                <span id="buttonText">Request Tokens</span>
+                <svg id="loadingSpinner" class="spinner hidden" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"></circle>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </button>
+        </form>
+
+        <div id="resultContainer" class="result hidden">
+            <h3>Token request successful</h3>
+            <p>Transfer ID:</p>
+            <p id="tokenResult" class="mono"></p>
+            <p>
+                <button id="copyToken" class="link-btn">Copy to clipboard</button>
+                &nbsp;&middot;&nbsp;
+                <a id="aoExplorerLink" href="#" target="_blank" rel="noopener">View on Solana Explorer</a>
+            </p>
+            <div class="whats-next">
+                <p class="wn-title">What&rsquo;s next?</p>
+                <a class="wn-primary" href="https://console.ar.io" target="_blank" rel="noopener">Open the ar.io Console &rarr;</a>
+                <p class="wn-hint">Stake your tokens or register an ArNS name in the Console.</p>
+                <div class="wn-links">
+                    <a href="https://docs.ar.io/build/guides" target="_blank" rel="noopener">Build guides</a>
+                    <a href="https://github.com/ar-io/ar-io-sdk" target="_blank" rel="noopener">ar.io SDK</a>
+                    <a href="https://docs.ar.io/sdks/turbo-sdk" target="_blank" rel="noopener">Turbo SDK</a>
+                    <a href="https://github.com/ar-io/ar-io-deploy" target="_blank" rel="noopener">ar-io-deploy</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorContainer" class="error-box hidden">
+            <h3>Something went wrong</h3>
+            <p id="errorMessage"></p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="links">
+            <a href="https://console.ar.io" target="_blank" rel="noopener">Console</a>
+            <span class="sep">&middot;</span>
+            <a href="https://docs.ar.io/build/guides" target="_blank" rel="noopener">Docs</a>
+            <span class="sep">&middot;</span>
+            <a href="https://github.com/ar-io/ar-io-sdk" target="_blank" rel="noopener">ar.io SDK</a>
+            <span class="sep">&middot;</span>
+            <a href="https://docs.ar.io/sdks/turbo-sdk" target="_blank" rel="noopener">Turbo SDK</a>
+            <span class="sep">&middot;</span>
+            <a href="https://github.com/ar-io/ar-io-deploy" target="_blank" rel="noopener">ar-io-deploy</a>
+        </div>
+        <div class="copy">&copy; 2026 <a href="https://ar.io" target="_blank" rel="noopener">ar.io</a>. All rights reserved.</div>
+    </footer>
+
+    <script>
         const githubOAuthEnabled = <%= githubOAuthEnabled ? 'true' : 'false' %>;
+        const captchaEnabled = <%= captchaSiteKey ? 'true' : 'false' %>;
         const tokenId = '<%= tokenId %>';
 
-        // The claim token is NO LONGER exposed to JS / the URL. The OAuth callback
-        // sets it in an HttpOnly, Secure, SameSite=Lax cookie scoped to /api and
-        // redirects back with `?github=1` purely as a UI signal. The cookie is
-        // sent automatically on the claim request (credentials: 'include').
+        // The claim token is NOT exposed to JS / the URL. The OAuth callback sets it
+        // in an HttpOnly, Secure cookie scoped to /api and redirects back with
+        // `?github=1` purely as a UI signal. The cookie is sent automatically on the
+        // claim request (credentials: 'include').
         let githubSignedIn = false;
         (function readGithubSignal() {
             const params = new URLSearchParams(location.search);
             if (params.get('github') === '1') {
                 githubSignedIn = true;
-                // strip the query flag so a reload doesn't keep it around
                 params.delete('github');
                 const qs = params.toString();
-                history.replaceState(
-                    null,
-                    '',
-                    location.pathname + (qs ? `?${qs}` : ''),
-                );
+                history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : ''));
             }
         })();
 
@@ -182,20 +348,19 @@
             link.href = `<%= baseUrl %>/api/auth/github/login?process-id=${encodeURIComponent(tokenId)}`;
             if (githubSignedIn) {
                 status.textContent = 'GitHub sign-in complete. You can now claim.';
+                status.classList.add('done');
             } else {
                 gate.classList.remove('hidden');
             }
         }
 
-        // Handle form submission
         document.getElementById('tokenRequestForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            showLoading();
-            // Get hCaptcha response
-            const hcaptchaResponse = hcaptcha.getResponse();
-            if (!hcaptchaResponse) {
-                showError('Please complete the captcha');
-                return;
+
+            let hcaptchaResponse = '';
+            if (captchaEnabled) {
+                hcaptchaResponse = (typeof hcaptcha !== 'undefined') ? hcaptcha.getResponse() : '';
+                if (!hcaptchaResponse) { showError('Please complete the captcha.'); return; }
             }
 
             if (githubOAuthEnabled && !githubSignedIn) {
@@ -203,31 +368,29 @@
                 return;
             }
 
+            showLoading();
+
             const recipient = document.getElementById('recipient').value;
             const processId = document.getElementById('processId').value;
             const qty = document.getElementById('qty').value;
+
+            const payload = { processId, recipient, qty: parseInt(qty, 10) };
+            if (captchaEnabled) payload.captchaResponse = hcaptchaResponse;
 
             try {
                 const response = await fetch('<%= baseUrl %>/api/claim/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    // send the HttpOnly claim-token + session cookies
                     credentials: 'include',
-                    body: JSON.stringify({
-                        processId,
-                        captchaResponse: hcaptchaResponse,
-                        recipient,
-                        qty: parseInt(qty, 10)
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
-                    const body = await response.json().catch(() => { error: response.statusText });
-                    throw new Error(body.error);
+                    const body = await response.json().catch(() => ({ error: response.statusText }));
+                    throw new Error(body.error || 'Request failed');
                 }
 
                 const data = await response.json();
-
                 showResult(data.id);
             } catch (error) {
                 showError(error.message);
@@ -235,53 +398,46 @@
         });
 
         function showLoading() {
-            const submitButton = document.getElementById('submitButton');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const buttonText = document.getElementById('buttonText');
-            
-            submitButton.disabled = true;
-            loadingSpinner.classList.remove('hidden');
-            buttonText.textContent = 'Processing...';
+            document.getElementById('submitButton').disabled = true;
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+            document.getElementById('buttonText').textContent = 'Processing...';
         }
-        
+
         function hideLoading() {
-            const submitButton = document.getElementById('submitButton');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            const buttonText = document.getElementById('buttonText');
-            
-            submitButton.disabled = false;
-            loadingSpinner.classList.add('hidden');
-            buttonText.textContent = 'Request Tokens';
+            document.getElementById('submitButton').disabled = false;
+            document.getElementById('loadingSpinner').classList.add('hidden');
+            document.getElementById('buttonText').textContent = 'Request Tokens';
         }
-        
+
+        function resetCaptcha() {
+            if (captchaEnabled && typeof hcaptcha !== 'undefined') hcaptcha.reset();
+        }
+
         function showResult(id) {
             document.getElementById('tokenResult').textContent = id;
             document.getElementById('aoExplorerLink').href = `https://explorer.solana.com/tx/${id}?cluster=devnet`;
             document.getElementById('resultContainer').classList.remove('hidden');
             document.getElementById('errorContainer').classList.add('hidden');
             document.getElementById('tokenRequestForm').reset();
-            hcaptcha.reset();
+            resetCaptcha();
             hideLoading();
         }
-        
+
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
             document.getElementById('errorContainer').classList.remove('hidden');
             document.getElementById('resultContainer').classList.add('hidden');
-            hcaptcha.reset();
+            resetCaptcha();
             hideLoading();
         }
-        
-        // Copy token to clipboard
+
         document.getElementById('copyToken').addEventListener('click', function() {
             const tokenText = document.getElementById('tokenResult').textContent;
-            navigator.clipboard.writeText(tokenText).then(function() {
+            navigator.clipboard.writeText(tokenText).then(() => {
                 this.textContent = 'Copied!';
-                setTimeout(() => {
-                    this.textContent = 'Copy to clipboard';
-                }, 2000);
-            }.bind(this));
-        });
+                setTimeout(() => { this.textContent = 'Copy to clipboard'; }, 2000);
+            });
+        }.bind(document.getElementById('copyToken')));
     </script>
 </body>
 </html>
