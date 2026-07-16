@@ -1,15 +1,20 @@
 # AR.IO Testnet / Devnet Stack
 
-> **STATUS: WORK IN PROGRESS — not yet stood up end to end.** This documents the
-> *target* architecture, per-component setup, and the developer flow. Items
-> marked **🔲 BLOCKER** are unresolved and will stop a real test until filled in.
-> Nobody has run the full fund→upload→name→resolve flow yet.
+> **STATUS: WORK IN PROGRESS — faucet is live; gateway/bundler/ArNS remain.** The
+> **faucet** (`faucet.services.ar-io.dev`, self-hosted UI + API on one origin) is
+> deployed and dispensing devnet ARIO. The remaining gaps to a real end-to-end
+> test are the **gateway devnet reconfig**, **bundler testnet confirmation**, and
+> **ArNS devnet registration** — items marked **🔲** in §6. Nobody has run the
+> full fund→upload→name→resolve flow yet.
 
 ## Can I test right now?
 
-**No.** A dev/agent cannot complete the end-to-end flow until the blockers in
-[§6](#6-blockers--must-resolve-before-first-successful-test) are resolved. Read
-that section first — it is the honest gap list.
+**Partially.** You can already claim devnet ARIO from the faucet
+(`faucet.services.ar-io.dev`). But you cannot complete the full
+fund→upload→name→resolve loop until the **open** blockers in
+[§6](#6-blockers--must-resolve-before-first-successful-test) (gateway devnet
+reconfig, bundler testnet confirm, ArNS registration) are resolved. Read that
+section first — it is the honest gap list.
 
 ---
 
@@ -46,7 +51,7 @@ AR.IO network state (gateways, ArNS, ANT) is read from **Solana devnet**.
 |---|---|---|
 | Gateway (ar-io-node) | ar-io.dev host | 🔲 **not reconfigured to devnet** (planned) |
 | Turbo bundler (upload+payment) | separate box | ⚙️ up on latest; **testnet config unconfirmed** 🔲 |
-| Faucet | $5 Hetzner (target) | code ready on branch; **not deployed / not provisioned** 🔲 |
+| Faucet | services box (`faucet.services.ar-io.dev`) | ✅ deployed — self-hosted UI + API on one origin, GitHub-gated, 2,500 ARIO / 8h |
 | ArNS / ANT | Solana devnet programs | resolution path planned; **registration unproven** 🔲 |
 | Content scanner | ar-io.dev sidecar | ✅ v0.5.0 live |
 
@@ -82,19 +87,25 @@ whether they accept devnet uploads, whether payment is bypassed or credits are
 required, and which token/network they’re bound to. Client points at them via
 `turbo-sdk` (`uploadServiceConfig.url` / `paymentServiceConfig.url` / `gatewayUrl`).
 
-### 4.3 Faucet — code ready on `feat/solana-devnet-port` (repo `ar-io-faucet`)
-Run: `yarn build && yarn start` (Node 22). Required env (see `.env.example`):
+### 4.3 Faucet — ✅ deployed at `faucet.services.ar-io.dev` (repo `ar-io-faucet`)
+Single origin serves both the self-hosted UI and the API (same-site cookies, no
+CORS). Runs as the published image `ghcr.io/ar-io/ar-io-faucet:latest` behind the
+services-box TLS proxy. Dispenses **2,500 ARIO** per claim; **8h** per-GitHub-account
+window. Key env:
 ```dotenv
 SOLANA_RPC_URL=https://api.devnet.solana.com
-SOLANA_TOKEN_MINT=<devnet token mint>                 # 🔲 BLOCKER — see §6
-SOLANA_FAUCET_SECRET_KEY=<base58 or JSON keypair>     # funded with the token + SOL for fees
+SOLANA_TOKEN_MINT=6vTw5CysRXQ4ybbHkDUiisHWVsBeMtUzYvJqs2iqHyaN   # ARIO-staging SPL, 6 decimals
+SOLANA_FAUCET_SECRET_KEY_FILE=/app/wallets/faucet.json           # funded with the token + SOL for fees
 AUTH_TOKEN_SECRET=<random>
 GITHUB_OAUTH_ENABLED=true
-GITHUB_CLIENT_ID=<oauth app>                           # 🔲 register a GitHub OAuth app
+GITHUB_CLIENT_ID=<oauth app>
 GITHUB_CLIENT_SECRET=<oauth app>
-GITHUB_OAUTH_CALLBACK_URL=https://<faucet-host>/api/auth/github/callback
+GITHUB_OAUTH_CALLBACK_URL=https://faucet.services.ar-io.dev/api/auth/github/callback
+FRONT_END_URL=https://faucet.services.ar-io.dev                  # same origin serves the UI
+ENABLE_SELF_HOSTED_FRONTEND=true
+COOKIE_SAMESITE=lax                                              # same-site; 'none' only for a split-origin UI
 GITHUB_MIN_ACCOUNT_AGE_DAYS=30
-TRUST_PROXY=true                                       # ONLY if behind a proxy that overwrites XFF
+TRUST_PROXY=true                                                 # LB must OVERWRITE XFF + forward X-Forwarded-Proto
 COOKIE_SECURE=true
 # hCaptcha + rate-limit vars retained (CAPTCHA_*, GLOBAL_RATE_LIMIT_*)
 ```
@@ -117,14 +128,18 @@ devnet (the devnet `ario` SPL mint is currently `null`).
 - Data is **ephemeral** and **`verified=false`** — communicate to devs.
 
 ## 6. BLOCKERS — must resolve before first successful test
-1. **Devnet token mint** (`SOLANA_TOKEN_MINT`) — does a devnet ARIO SPL mint exist? Research found it `null`. If not, create one or pick what the faucet dispenses.
-2. **Faucet: deploy + public URL** — not deployed anywhere yet.
-3. **GitHub OAuth app** — client id/secret + callback registered.
-4. **Funded faucet keypair** — holds the devnet token + SOL for fees.
-5. **Gateway reconfigured to devnet** — env applied, restarted, devnet ArNS resolution confirmed.
-6. **Bundler testnet behavior confirmed** — accepts devnet uploads; payment bypass or credits; token/network.
-7. **ArNS devnet registration proven** — the token/cost to register a name on devnet.
-8. **One real end-to-end run** — nobody has done fund→upload→name→resolve yet; faucet e2e (Docker) has never run.
+
+**Resolved (faucet track):**
+1. ✅ **Devnet token mint** — `6vTw5CysRXQ4ybbHkDUiisHWVsBeMtUzYvJqs2iqHyaN` (ARIO-staging SPL, 6 decimals); the faucet dispenses it.
+2. ✅ **Faucet deployed + public URL** — `faucet.services.ar-io.dev` (self-hosted UI + API), GitHub-gated, 2,500 ARIO / 8h.
+3. ✅ **GitHub OAuth app** — client id/secret + callback registered on the faucet host.
+4. ✅ **Funded faucet keypair** — holds the devnet token + SOL for fees (on the services box).
+
+**Open (gateway / bundler / ArNS track):**
+5. 🔲 **Gateway reconfigured to devnet** — env applied, restarted, devnet ArNS resolution confirmed.
+6. 🔲 **Bundler testnet behavior confirmed** — `upload`/`payment.services.ar-io.dev` accept devnet uploads; payment bypass or credits; token/network.
+7. 🔲 **ArNS devnet registration proven** — the token/cost to register a name on devnet.
+8. 🔲 **One real end-to-end run** — a devnet faucet claim has landed on-chain, but nobody has done the full fund→upload→name→resolve yet.
 
 ## 7. Agent quick-reference
 - Devnet program IDs: `ar-io/ar-io-solana-contracts/program-ids/staging.json` (**re-pull — IDs rotate**).
