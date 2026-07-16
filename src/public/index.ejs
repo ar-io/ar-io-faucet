@@ -147,6 +147,14 @@
         .github-status { display: flex; align-items: center; gap: 6px; margin: 11px 0 0; font-size: 0.78rem; color: var(--muted); }
         .github-status svg { width: 13px; height: 13px; flex-shrink: 0; }
         .github-status.done { color: var(--success); font-weight: 600; }
+        .github-signedin {
+            display: flex; align-items: center; gap: 9px;
+            background: var(--success-bg); border: 1px solid var(--success-border);
+            border-radius: 14px; padding: 13px 16px;
+            font-size: 0.88rem; font-weight: 600; color: var(--success);
+        }
+        .github-signedin svg { width: 19px; height: 19px; flex-shrink: 0; }
+        #githubUserLabel { font-weight: 700; }
 
         .h-captcha { margin-top: 4px; display: flex; justify-content: center; }
 
@@ -257,9 +265,17 @@
                 </p>
             </div>
 
+            <div id="githubSignedIn" class="github-signedin hidden">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Signed in<span id="githubUserLabel"></span> &mdash; you can claim now.</span>
+            </div>
+
             <div>
-                <label for="qty">Quantity (max 10,000)</label>
-                <input type="number" id="qty" name="qty" min="1" max="10000" value="10000" required>
+                <label for="qty">Amount (ARIO)</label>
+                <input type="number" id="qty" name="qty" required step="any"
+                    min="<%= (locals.minQty ?? 10000000) / Math.pow(10, locals.decimals ?? 6) %>"
+                    max="<%= (locals.maxQty ?? 10000000000) / Math.pow(10, locals.decimals ?? 6) %>"
+                    value="<%= (locals.defaultQty ?? 10000000000) / Math.pow(10, locals.decimals ?? 6) %>">
             </div>
 
             <% if (captchaSiteKey) { %>
@@ -326,16 +342,39 @@
         const captchaEnabled = <%= captchaSiteKey ? 'true' : 'false' %>;
         const tokenId = '<%= tokenId %>';
 
+        // Amounts are entered in whole ARIO but the API expects base units
+        // (integer, scaled by the token's decimals). Values come from the backend
+        // with safe fallbacks for the static/permaweb build (ARIO devnet = 6 dp).
+        const TOKEN_DECIMALS = <%= locals.decimals ?? 6 %>;
+        const MIN_QTY = <%= locals.minQty ?? 10000000 %>;
+        const MAX_QTY = <%= locals.maxQty ?? 10000000000 %>;
+        const QTY_FACTOR = Math.pow(10, TOKEN_DECIMALS);
+
+        // Signing in with GitHub is a full-page redirect to github.com and back,
+        // which would otherwise clear the form. Persist the inputs before leaving
+        // and restore them on return (sessionStorage survives the round-trip).
+        const FORM_KEY = 'arioFaucetForm';
+        (function restoreForm() {
+            try {
+                const s = JSON.parse(sessionStorage.getItem(FORM_KEY) || '{}');
+                if (s.recipient) document.getElementById('recipient').value = s.recipient;
+                if (s.qty) document.getElementById('qty').value = s.qty;
+            } catch (e) {}
+        })();
+
         // The claim token is NOT exposed to JS / the URL. The OAuth callback sets it
         // in an HttpOnly, Secure cookie scoped to /api and redirects back with
-        // `?github=1` purely as a UI signal. The cookie is sent automatically on the
-        // claim request (credentials: 'include').
+        // `?github=1&gh_user=<login>` purely as UI signals. The cookie is sent
+        // automatically on the claim request (credentials: 'include').
         let githubSignedIn = false;
+        let githubUser = '';
         (function readGithubSignal() {
             const params = new URLSearchParams(location.search);
             if (params.get('github') === '1') {
                 githubSignedIn = true;
+                githubUser = params.get('gh_user') || '';
                 params.delete('github');
+                params.delete('gh_user');
                 const qs = params.toString();
                 history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : ''));
             }
@@ -344,11 +383,20 @@
         if (githubOAuthEnabled) {
             const gate = document.getElementById('githubGate');
             const link = document.getElementById('githubLoginLink');
-            const status = document.getElementById('githubStatus');
+            const signedInBox = document.getElementById('githubSignedIn');
             link.href = `<%= baseUrl %>/api/auth/github/login?process-id=${encodeURIComponent(tokenId)}`;
+            // Save the form before the redirect so it's restored when we return.
+            link.addEventListener('click', function() {
+                try {
+                    sessionStorage.setItem(FORM_KEY, JSON.stringify({
+                        recipient: document.getElementById('recipient').value,
+                        qty: document.getElementById('qty').value
+                    }));
+                } catch (e) {}
+            });
             if (githubSignedIn) {
-                status.textContent = 'GitHub sign-in complete. You can now claim.';
-                status.classList.add('done');
+                if (githubUser) document.getElementById('githubUserLabel').textContent = ' as @' + githubUser;
+                signedInBox.classList.remove('hidden');
             } else {
                 gate.classList.remove('hidden');
             }
@@ -368,13 +416,19 @@
                 return;
             }
 
-            showLoading();
-
             const recipient = document.getElementById('recipient').value;
             const processId = document.getElementById('processId').value;
-            const qty = document.getElementById('qty').value;
+            const amount = parseFloat(document.getElementById('qty').value);
+            if (!(amount > 0)) { showError('Enter a valid amount.'); return; }
+            const qtyBase = Math.round(amount * QTY_FACTOR);
+            if (qtyBase < MIN_QTY || qtyBase > MAX_QTY) {
+                showError(`Amount must be between ${MIN_QTY / QTY_FACTOR} and ${MAX_QTY / QTY_FACTOR} ARIO.`);
+                return;
+            }
 
-            const payload = { processId, recipient, qty: parseInt(qty, 10) };
+            showLoading();
+
+            const payload = { processId, recipient, qty: qtyBase };
             if (captchaEnabled) payload.captchaResponse = hcaptchaResponse;
 
             try {
@@ -419,6 +473,7 @@
             document.getElementById('resultContainer').classList.remove('hidden');
             document.getElementById('errorContainer').classList.add('hidden');
             document.getElementById('tokenRequestForm').reset();
+            try { sessionStorage.removeItem(FORM_KEY); } catch (e) {}
             resetCaptcha();
             hideLoading();
         }
