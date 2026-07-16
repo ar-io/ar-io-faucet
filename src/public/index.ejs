@@ -182,12 +182,31 @@
         .link-btn:hover { text-decoration: underline; }
         .result a { color: var(--primary); font-weight: 600; font-size: 0.82rem; word-break: break-all; }
 
+        .whats-next { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--success-border); }
+        .wn-title { margin: 0 0 10px; font-size: 0.9rem; font-weight: 700; color: var(--black); }
+        .result a.wn-primary {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+            padding: 11px 16px; font-size: 0.9rem; font-weight: 700; color: var(--white);
+            background: linear-gradient(180deg, #5f34d2 0%, var(--primary-deep) 100%);
+            border-radius: 11px; text-decoration: none;
+            box-shadow: 0 10px 22px -10px var(--shadow-primary);
+            transition: filter 0.15s, transform 0.06s;
+        }
+        .result a.wn-primary:hover { filter: brightness(1.06); text-decoration: none; }
+        .result a.wn-primary:active { transform: translateY(1px); }
+        .wn-hint { margin: 9px 0 0; font-size: 0.78rem; color: var(--body-gray); }
+        .wn-links { margin: 13px 0 0; display: flex; flex-wrap: wrap; gap: 7px 16px; }
+        .wn-links a { font-size: 0.82rem; font-weight: 600; color: var(--primary); text-decoration: none; }
+        .wn-links a:hover { text-decoration: underline; }
+
         footer { margin-top: 30px; font-size: 0.8rem; color: var(--muted); text-align: center; }
-        footer .links { margin-bottom: 8px; }
+        footer .links { margin-bottom: 8px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 0; }
         footer a { color: var(--body-gray); text-decoration: none; font-weight: 600; }
         footer a:hover { color: var(--primary); }
         footer .sep { margin: 0 9px; color: var(--dark-accent-lavender); }
-        footer .copy { color: #9a97a8; }
+        footer .copy { color: #9a97a8; margin-top: 2px; }
+        footer .copy a { color: #9a97a8; }
+        footer .copy a:hover { color: var(--primary); }
 
         @media (max-width: 500px) {
             body { padding: 32px 16px 28px; }
@@ -204,7 +223,7 @@
     <header>
         <span class="eyebrow"><span class="dot"></span>Solana Devnet</span>
         <h1>Testnet Faucet</h1>
-        <p>Request tokens for the ar.io Testnet. Restrictions apply &mdash; see <a href="https://docs.ar.io/guides/testnet" target="_blank" rel="noopener">docs.ar.io</a> for details.</p>
+        <p>Request tokens for the ar.io Testnet. Restrictions apply &mdash; see <a href="https://docs.ar.io" target="_blank" rel="noopener">docs.ar.io</a> for details.</p>
     </header>
 
     <main class="card">
@@ -268,6 +287,17 @@
                 &nbsp;&middot;&nbsp;
                 <a id="aoExplorerLink" href="#" target="_blank" rel="noopener">View on Solana Explorer</a>
             </p>
+            <div class="whats-next">
+                <p class="wn-title">What&rsquo;s next?</p>
+                <a class="wn-primary" href="https://console.ar.io" target="_blank" rel="noopener">Open the ar.io Console &rarr;</a>
+                <p class="wn-hint">Stake your tokens or register an ArNS name in the Console.</p>
+                <div class="wn-links">
+                    <a href="https://docs.ar.io/build/guides" target="_blank" rel="noopener">Build guides</a>
+                    <a href="https://github.com/ar-io/ar-io-sdk" target="_blank" rel="noopener">ar.io SDK</a>
+                    <a href="https://docs.ar.io/sdks/turbo-sdk" target="_blank" rel="noopener">Turbo SDK</a>
+                    <a href="https://github.com/ar-io/ar-io-deploy" target="_blank" rel="noopener">ar-io-deploy</a>
+                </div>
+            </div>
         </div>
 
         <div id="errorContainer" class="error-box hidden">
@@ -278,13 +308,17 @@
 
     <footer>
         <div class="links">
-            <a href="https://ar.io" target="_blank" rel="noopener">ar.io</a>
+            <a href="https://console.ar.io" target="_blank" rel="noopener">Console</a>
             <span class="sep">&middot;</span>
-            <a href="https://docs.ar.io/guides/testnet" target="_blank" rel="noopener">Docs</a>
+            <a href="https://docs.ar.io/build/guides" target="_blank" rel="noopener">Docs</a>
             <span class="sep">&middot;</span>
-            <a href="https://x.com/ar_io_network" target="_blank" rel="noopener">X</a>
+            <a href="https://github.com/ar-io/ar-io-sdk" target="_blank" rel="noopener">ar.io SDK</a>
+            <span class="sep">&middot;</span>
+            <a href="https://docs.ar.io/sdks/turbo-sdk" target="_blank" rel="noopener">Turbo SDK</a>
+            <span class="sep">&middot;</span>
+            <a href="https://github.com/ar-io/ar-io-deploy" target="_blank" rel="noopener">ar-io-deploy</a>
         </div>
-        <div class="copy">&copy; 2026 ar.io. All rights reserved.</div>
+        <div class="copy">&copy; 2026 <a href="https://ar.io" target="_blank" rel="noopener">ar.io</a>. All rights reserved.</div>
     </footer>
 
     <script>
