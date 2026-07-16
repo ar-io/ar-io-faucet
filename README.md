@@ -180,18 +180,26 @@ source IP to bypass rate limits.
 
 ## Deployment topology (AR.IO testnet)
 
-The AR.IO testnet faucet runs as a **backend API** (`faucet.services.ar-io.dev`,
-matching the bundler's `*.services.ar-io.dev` convention) with a **separate
-frontend app** (`faucet.ar.io`, hosted on Arweave). Because those are different
-registrable domains (cross-*site*), the deployment must:
+The AR.IO testnet faucet runs as a **single origin** — `faucet.services.ar-io.dev`
+(matching the bundler's `*.services.ar-io.dev` convention) serves **both** the API
+and the built-in self-hosted UI (`ENABLE_SELF_HOSTED_FRONTEND=true`). Because the
+UI and API share an origin, cookies are **same-site** and no CORS grant is needed:
 
-- point the **GitHub OAuth callback** at the backend: `GITHUB_OAUTH_CALLBACK_URL=https://faucet.services.ar-io.dev/api/auth/github/callback`
-- allow the frontend origin for **credentialed CORS**: `CORS_ALLOWED_ORIGINS=https://faucet.ar.io`
-- send cookies **cross-site**: `COOKIE_SAMESITE=none` (requires `COOKIE_SECURE=true`)
-- set `FRONT_END_URL=https://faucet.ar.io` (where the callback redirects after auth)
+- `FRONT_END_URL=https://faucet.services.ar-io.dev` — the faucet itself; this is where the OAuth callback redirects after auth
+- `GITHUB_OAUTH_CALLBACK_URL=https://faucet.services.ar-io.dev/api/auth/github/callback`
+- `COOKIE_SAMESITE=lax` (the default; safe for same-site)
+- leave `CORS_ALLOWED_ORIGINS` unset (defaults to `FRONT_END_URL`)
 
 Run behind a TLS-terminating reverse proxy that forwards `X-Forwarded-Proto: https`
-and **overwrites** `X-Forwarded-For` (with `TRUST_PROXY=true`). Agents/devs: see
+and **overwrites** `X-Forwarded-For` (with `TRUST_PROXY=true` + `COOKIE_SECURE=true`).
+
+**Optional split-origin mode.** If you instead host the UI on a *different* site
+(e.g. a frontend on Arweave at `faucet.ar.io` with this API at
+`faucet.services.ar-io.dev`), that's cross-*site*, so you must additionally set
+`CORS_ALLOWED_ORIGINS=https://faucet.ar.io` (credentialed CORS), `COOKIE_SAMESITE=none`
+(requires `COOKIE_SECURE=true`), and `FRONT_END_URL=https://faucet.ar.io`.
+
+Agents/devs: see
 [`.claude/skills/ario-testnet-faucet/SKILL.md`](.claude/skills/ario-testnet-faucet/SKILL.md)
 for the API + claim flow.
 

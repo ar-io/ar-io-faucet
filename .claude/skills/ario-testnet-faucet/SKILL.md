@@ -1,6 +1,6 @@
 ---
 name: ario-testnet-faucet
-description: Get ARIO test tokens on the AR.IO Solana-devnet sandbox. Use when an agent or dev needs testnet ARIO to pay the sandbox bundler for uploads or to buy devnet ArNS names. Covers the faucet API (faucet.services.ar-io.dev backend / faucet.ar.io frontend), the claim flow, limits, and the GitHub-OAuth gate.
+description: Get ARIO test tokens on the AR.IO Solana-devnet sandbox. Use when an agent or dev needs testnet ARIO to pay the sandbox bundler for uploads or to buy devnet ArNS names. Covers the faucet at faucet.services.ar-io.dev (self-hosted UI + API on one origin), the claim flow, limits, and the GitHub-OAuth gate.
 ---
 
 # AR.IO Testnet Faucet (ARIO on Solana devnet)
@@ -10,8 +10,10 @@ AR.IO testnet sandbox — pay the sandbox bundler (`upload.services.ar-io.dev`,
 ≤~105 KB uploads) and buy devnet ArNS names — with **no mainnet, no real money**.
 
 ## Topology
-- **Frontend (UI):** `https://faucet.ar.io` — an Arweave-hosted app; where humans click "Sign in with GitHub" and claim.
-- **Backend (API):** `https://faucet.services.ar-io.dev` — this service. All `/api/*` routes + the OAuth callback live here.
+Single origin: **`https://faucet.services.ar-io.dev`** serves both the UI and the
+API (the service's built-in self-hosted frontend). Humans click "Sign in with
+GitHub" and claim there; all `/api/*` routes and the OAuth callback live on the
+same host, so cookies are **same-site** and no CORS grant is needed.
 
 ## Facts
 - Network: **Solana devnet** (`https://api.devnet.solana.com`).
@@ -25,7 +27,7 @@ AR.IO testnet sandbox — pay the sandbox bundler (`upload.services.ar-io.dev`,
 2. A little **devnet SOL** for fees: `solana airdrop 1 <addr> --url devnet` (or faucet.solana.com). The faucet pays the transfer fee, but you need SOL to *use* the tokens afterward.
 
 ## The claim flow (humans)
-Go to `https://faucet.ar.io` → **Sign in with GitHub** → enter your Solana address → **Claim**.
+Go to `https://faucet.services.ar-io.dev` → **Sign in with GitHub** → enter your Solana address → **Claim**.
 The gate: one claim per GitHub account per 8-hour window, GitHub account must be ≥ 30 days old, plus rate limits. (Anti-sybil — see the agent note below.)
 
 ## API reference (backend: `https://faucet.services.ar-io.dev`)
