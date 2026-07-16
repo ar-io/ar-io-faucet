@@ -32,6 +32,7 @@ import {
 } from '@solana/web3.js';
 import * as config from '../config.js';
 import { BadRequestError, TransferSendError } from '../errors.js';
+import { notifyLowBalance } from '../notifications/slack.js';
 import type { TokenCache, TokenFaucet, TokenPayload } from '../types.js';
 
 export class SolanaTokenFaucet implements TokenFaucet {
@@ -239,6 +240,19 @@ export class SolanaTokenFaucet implements TokenFaucet {
 		};
 	}
 
+	// Public read-only accessors for notification/formatting consumers.
+	get tokenDecimals(): number {
+		return this.decimals;
+	}
+
+	get tokenName(): string {
+		return this.tokenId;
+	}
+
+	get faucetAddress(): string {
+		return this.issuer;
+	}
+
 	async claim({
 		qty = this.defaultQty,
 		recipient,
@@ -362,6 +376,20 @@ export class SolanaTokenFaucet implements TokenFaucet {
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
+		}
+
+		// fire-and-forget low-balance alert (opt-in via SLACK_LOW_BALANCE_THRESHOLD)
+		if (
+			config.SLACK_LOW_BALANCE_THRESHOLD !== undefined &&
+			faucetBalance - qtyBase < BigInt(config.SLACK_LOW_BALANCE_THRESHOLD)
+		) {
+			notifyLowBalance({
+				remainingBaseUnits: faucetBalance - qtyBase,
+				thresholdBaseUnits: config.SLACK_LOW_BALANCE_THRESHOLD,
+				decimals: this.decimals,
+				tokenId: this.tokenId,
+				faucetAddress: this.issuer,
+			});
 		}
 
 		return { id: signature, status: 'success' };

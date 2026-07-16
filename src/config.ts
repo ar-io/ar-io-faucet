@@ -79,6 +79,18 @@ export const SOLANA_TOKEN_DECIMALS = process.env.SOLANA_TOKEN_DECIMALS
 	: undefined;
 export const SOLANA_COMMITMENT = process.env.SOLANA_COMMITMENT || 'confirmed';
 
+// Optional Slack Incoming Webhook for claim + low-balance notifications. When
+// unset, Slack notifications are disabled. Treat the URL as a secret.
+export const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+
+// Optional low-balance alert threshold in BASE units (scaled by token decimals).
+// When set, a Slack alert fires after a claim if the faucet's remaining token
+// balance falls below it. Requires SLACK_WEBHOOK_URL.
+export const SLACK_LOW_BALANCE_THRESHOLD = process.env
+	.SLACK_LOW_BALANCE_THRESHOLD
+	? +process.env.SLACK_LOW_BALANCE_THRESHOLD
+	: undefined;
+
 // auth token signing config (HS256 service JWT)
 export const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET;
 

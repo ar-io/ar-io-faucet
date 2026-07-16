@@ -20,7 +20,9 @@ same host, so cookies are **same-site** and no CORS grant is needed.
 - Token: **ARIO-staging SPL**, mint `6vTw5CysRXQ4ybbHkDUiisHWVsBeMtUzYvJqs2iqHyaN`, **6 decimals**.
 - `processId` for every request: **`solana-devnet`**.
 - `qty` is in **base units** (10 ARIO = `10000000`). Per-claim min 10 ARIO, max 2,500 ARIO.
-- `recipient` is a **Solana base58 address**.
+- `recipient` is a **Solana base58 address**. A recipient **already holding ≥ the max
+  (2,500 ARIO)** is rejected (`Recipient … already has more than the maximum quantity`)
+  — claim to a fresh address.
 
 ## Prerequisites (recipient side)
 1. A Solana devnet keypair/address.
