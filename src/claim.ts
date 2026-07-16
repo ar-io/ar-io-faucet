@@ -17,6 +17,7 @@
  */
 import { TransferSendError } from './errors.js';
 import type { SolanaTokenFaucet } from './faucet/solana-token-faucet.js';
+import { notifyClaim } from './notifications/slack.js';
 import type { TokenFaucet, TokenPayload } from './types.js';
 
 // The subset of the per-githubId anti-sybil store performClaim needs. Kept as an
@@ -86,6 +87,16 @@ export async function performClaim(
 			githubId,
 		});
 		ctx.body = { id, status };
+
+		// fire-and-forget Slack notification (opt-in via SLACK_WEBHOOK_URL)
+		notifyClaim({
+			githubLogin: payload?.githubLogin,
+			recipient,
+			amountBaseUnits: qty,
+			decimals: solanaFaucet.tokenDecimals,
+			tokenId: solanaFaucet.tokenName,
+			txId: id,
+		});
 	} catch (error) {
 		// POST-BROADCAST failure (send/confirm timeout): the transfer may have
 		// LANDED on-chain, so the token is treated as CONSUMED — do NOT release the
