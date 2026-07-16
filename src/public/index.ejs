@@ -147,6 +147,11 @@
         .github-status { display: flex; align-items: center; gap: 6px; margin: 11px 0 0; font-size: 0.78rem; color: var(--muted); }
         .github-status svg { width: 13px; height: 13px; flex-shrink: 0; }
         .github-status.done { color: var(--success); font-weight: 600; }
+        .field-hint { margin: 7px 0 0; font-size: 0.76rem; color: var(--muted); }
+        .gate-help { margin: 9px 0 0; font-size: 0.76rem; color: var(--muted); }
+        .error-help { margin: 8px 0 0; font-size: 0.8rem; color: var(--body-gray); }
+        .field-hint a, .gate-help a, .error-help a { color: var(--primary); font-weight: 600; text-decoration: none; }
+        .field-hint a:hover, .gate-help a:hover, .error-help a:hover { text-decoration: underline; }
         .github-signedin {
             display: flex; align-items: center; gap: 9px;
             background: var(--success-bg); border: 1px solid var(--success-border);
@@ -207,6 +212,33 @@
         .wn-links a { font-size: 0.82rem; font-weight: 600; color: var(--primary); text-decoration: none; }
         .wn-links a:hover { text-decoration: underline; }
 
+        .endpoints {
+            width: 100%; max-width: 468px; margin-top: 18px;
+            background: var(--white); border: 1px solid var(--border);
+            border-radius: 16px; padding: 18px 22px;
+        }
+        .endpoints-title { margin: 0 0 3px; font-size: 0.82rem; font-weight: 700; color: var(--black); }
+        .endpoints-sub { margin: 0 0 13px; font-size: 0.74rem; color: var(--muted); }
+        .endpoints ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+        .endpoints li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .endpoints li span { color: var(--body-gray); font-weight: 600; font-size: 0.82rem; white-space: nowrap; }
+        .endpoints li a {
+            color: var(--primary); font-weight: 600; text-decoration: none; word-break: break-all; text-align: right;
+            font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem;
+        }
+        .endpoints li a:hover { text-decoration: underline; }
+        .ids-divider { height: 1px; background: var(--border); margin: 16px 0; }
+        .ids { display: flex; flex-direction: column; gap: 9px; }
+        .id-row { display: flex; flex-direction: column; gap: 3px; }
+        .id-row > span { font-size: 0.74rem; font-weight: 700; color: var(--body-gray); }
+        .id-val {
+            font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace; font-size: 0.73rem;
+            color: var(--black); background: var(--warm-neutral); border: 1px solid var(--border);
+            border-radius: 7px; padding: 5px 8px; word-break: break-all; cursor: pointer; transition: border-color 0.15s;
+        }
+        .id-val:hover { border-color: var(--dark-accent-lavender); }
+        .id-val.copied::after { content: ' ✓ copied'; color: var(--success); font-weight: 700; white-space: nowrap; }
+
         footer { margin-top: 30px; font-size: 0.8rem; color: var(--muted); text-align: center; }
         footer .links { margin-bottom: 8px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 0; }
         footer a { color: var(--body-gray); text-decoration: none; font-weight: 600; }
@@ -241,6 +273,7 @@
                 <input type="text" id="recipient" name="recipient" required minlength="32" maxlength="44"
                     pattern="^[1-9A-HJ-NP-Za-km-z]+$" placeholder="Enter a Solana devnet address"
                     title="Must be a valid base58 Solana address (32-44 characters)">
+                <p class="field-hint">This wallet needs devnet SOL for fees &mdash; get some from the <a href="https://faucet.solana.com" target="_blank" rel="noopener">Solana faucet</a>.</p>
             </div>
 
             <div>
@@ -261,8 +294,9 @@
                 </a>
                 <p id="githubStatus" class="github-status">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    A GitHub sign-in (account 30+ days old) is required before claiming.
+                    Sign-in keeps the faucet fair. Accounts must be 30+ days old; one claim per account every <%= locals.rateLimitWindowHours ?? 8 %> hours.
                 </p>
+                <p class="gate-help">Some accounts may not pass verification. Trouble claiming? <a href="https://discord.com/invite/HGG52EtTc2" target="_blank" rel="noopener">Ask on the ar.io Discord</a>.</p>
             </div>
 
             <div id="githubSignedIn" class="github-signedin hidden">
@@ -308,6 +342,7 @@
                 <a class="wn-primary" href="https://console.ar.io" target="_blank" rel="noopener">Open the ar.io Console &rarr;</a>
                 <p class="wn-hint">Stake your tokens or register an ArNS name in the Console.</p>
                 <div class="wn-links">
+                    <a href="https://faucet.solana.com" target="_blank" rel="noopener">Get devnet SOL</a>
                     <a href="https://docs.ar.io/build/guides" target="_blank" rel="noopener">Build guides</a>
                     <a href="https://github.com/ar-io/ar-io-sdk" target="_blank" rel="noopener">ar.io SDK</a>
                     <a href="https://docs.ar.io/sdks/turbo-sdk" target="_blank" rel="noopener">Turbo SDK</a>
@@ -319,8 +354,31 @@
         <div id="errorContainer" class="error-box hidden">
             <h3>Something went wrong</h3>
             <p id="errorMessage"></p>
+            <p class="error-help">Still stuck? <a href="https://discord.com/invite/HGG52EtTc2" target="_blank" rel="noopener">Ask on the ar.io Discord</a>.</p>
         </div>
     </main>
+
+    <section class="endpoints">
+        <p class="endpoints-title">AR.IO Testnet endpoints</p>
+        <p class="endpoints-sub">Point your tools here once you have ARIO &mdash; Solana devnet, staging ARIO.</p>
+        <ul>
+            <li><span>Upload API</span><a href="https://upload.services.ar-io.dev" target="_blank" rel="noopener">upload.services.ar-io.dev</a></li>
+            <li><span>Payment API</span><a href="https://payment.services.ar-io.dev" target="_blank" rel="noopener">payment.services.ar-io.dev</a></li>
+            <li><span>Gateway</span><a href="https://ar-io.dev" target="_blank" rel="noopener">ar-io.dev</a></li>
+        </ul>
+
+        <div class="ids-divider"></div>
+
+        <p class="endpoints-title">Solana devnet program &amp; mint IDs</p>
+        <p class="endpoints-sub">Click any ID to copy.</p>
+        <div class="ids">
+            <div class="id-row"><span>ARIO mint</span><code class="id-val" title="Click to copy">6vTw5CysRXQ4ybbHkDUiisHWVsBeMtUzYvJqs2iqHyaN</code></div>
+            <div class="id-row"><span>ario-core program</span><code class="id-val" title="Click to copy">8Njx9wPkXiNzDCgjwVsJFRjpAEV34gGW3n8DzX3V23m1</code></div>
+            <div class="id-row"><span>ario-gar program</span><code class="id-val" title="Click to copy">7WsDTrtZBsfKtnP33XkjuqXCY69JE7n4QVYpynqJCFxz</code></div>
+            <div class="id-row"><span>ario-arns program</span><code class="id-val" title="Click to copy">6EZNezcg4rc5hnh8HG34vGquT3WpW5xXypzPb24uyEpp</code></div>
+            <div class="id-row"><span>ario-ant program</span><code class="id-val" title="Click to copy">DbHbRwUD1oAn1mrDSqtWtvwGcNrmhWdD2g8L4xmeQ7NX</code></div>
+        </div>
+    </section>
 
     <footer>
         <div class="links">
@@ -333,6 +391,8 @@
             <a href="https://docs.ar.io/sdks/turbo-sdk" target="_blank" rel="noopener">Turbo SDK</a>
             <span class="sep">&middot;</span>
             <a href="https://github.com/ar-io/ar-io-deploy" target="_blank" rel="noopener">ar-io-deploy</a>
+            <span class="sep">&middot;</span>
+            <a href="https://discord.com/invite/HGG52EtTc2" target="_blank" rel="noopener">Discord</a>
         </div>
         <div class="copy">&copy; 2026 <a href="https://ar.io" target="_blank" rel="noopener">ar.io</a>. All rights reserved.</div>
     </footer>
@@ -505,6 +565,16 @@
                 setTimeout(() => { this.textContent = 'Copy to clipboard'; }, 2000);
             });
         }.bind(document.getElementById('copyToken')));
+
+        // Click-to-copy the Solana program/mint IDs
+        document.querySelectorAll('.id-val').forEach(function (el) {
+            el.addEventListener('click', function () {
+                navigator.clipboard.writeText(el.textContent.trim()).then(function () {
+                    el.classList.add('copied');
+                    setTimeout(function () { el.classList.remove('copied'); }, 1200);
+                });
+            });
+        });
     </script>
 </body>
 </html>
