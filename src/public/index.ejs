@@ -212,6 +212,22 @@
         .wn-links a { font-size: 0.82rem; font-weight: 600; color: var(--primary); text-decoration: none; }
         .wn-links a:hover { text-decoration: underline; }
 
+        .endpoints {
+            width: 100%; max-width: 468px; margin-top: 18px;
+            background: var(--white); border: 1px solid var(--border);
+            border-radius: 16px; padding: 18px 22px;
+        }
+        .endpoints-title { margin: 0 0 3px; font-size: 0.82rem; font-weight: 700; color: var(--black); }
+        .endpoints-sub { margin: 0 0 13px; font-size: 0.74rem; color: var(--muted); }
+        .endpoints ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+        .endpoints li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .endpoints li span { color: var(--body-gray); font-weight: 600; font-size: 0.82rem; white-space: nowrap; }
+        .endpoints li a {
+            color: var(--primary); font-weight: 600; text-decoration: none; word-break: break-all; text-align: right;
+            font-family: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem;
+        }
+        .endpoints li a:hover { text-decoration: underline; }
+
         footer { margin-top: 30px; font-size: 0.8rem; color: var(--muted); text-align: center; }
         footer .links { margin-bottom: 8px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 0; }
         footer a { color: var(--body-gray); text-decoration: none; font-weight: 600; }
@@ -330,6 +346,16 @@
             <p class="error-help">Still stuck? <a href="https://discord.com/invite/HGG52EtTc2" target="_blank" rel="noopener">Ask on the ar.io Discord</a>.</p>
         </div>
     </main>
+
+    <section class="endpoints">
+        <p class="endpoints-title">AR.IO Testnet endpoints</p>
+        <p class="endpoints-sub">Point your tools here once you have ARIO &mdash; Solana devnet, staging ARIO.</p>
+        <ul>
+            <li><span>Upload API</span><a href="https://upload.services.ar-io.dev" target="_blank" rel="noopener">upload.services.ar-io.dev</a></li>
+            <li><span>Payment API</span><a href="https://payment.services.ar-io.dev" target="_blank" rel="noopener">payment.services.ar-io.dev</a></li>
+            <li><span>Gateway</span><a href="https://ar-io.dev" target="_blank" rel="noopener">ar-io.dev</a></li>
+        </ul>
+    </section>
 
     <footer>
         <div class="links">
