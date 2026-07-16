@@ -78,6 +78,9 @@ if (config.ENABLE_SELF_HOSTED_FRONTEND) {
 			minQty: config.DEFAULT_MIN_FAUCET_TOKEN_TRANSFER_QTY,
 			maxQty: config.DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY,
 			defaultQty: config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
+			rateLimitWindowHours: Math.round(
+				config.GLOBAL_RATE_LIMIT_WINDOW_SECONDS / 3600,
+			),
 		});
 	});
 	app.use(frontendRouter.routes());
