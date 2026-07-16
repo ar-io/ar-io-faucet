@@ -70,6 +70,14 @@ if (config.ENABLE_SELF_HOSTED_FRONTEND) {
 			baseUrl: '',
 			tokenId: config.SOLANA_TOKEN_ID,
 			githubOAuthEnabled: config.GITHUB_OAUTH_ENABLED,
+			// Quantity is entered in whole tokens but the API expects base units;
+			// give the frontend the token's decimals + configured bounds so it can
+			// convert and validate. decimals falls back to 6 in the template when
+			// SOLANA_TOKEN_DECIMALS is not set explicitly.
+			decimals: config.SOLANA_TOKEN_DECIMALS,
+			minQty: config.DEFAULT_MIN_FAUCET_TOKEN_TRANSFER_QTY,
+			maxQty: config.DEFAULT_MAX_FAUCET_TOKEN_TRANSFER_QTY,
+			defaultQty: config.DEFAULT_FAUCET_TOKEN_TRANSFER_QTY,
 		});
 	});
 	app.use(frontendRouter.routes());

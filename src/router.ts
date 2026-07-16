@@ -267,7 +267,7 @@ router.get('/api/auth/github/callback', async (ctx) => {
 		ctx.redirect(
 			`${config.FRONT_END_URL}/?process-id=${encodeURIComponent(
 				processId,
-			)}&github=1`,
+			)}&github=1&gh_user=${encodeURIComponent(user.login)}`,
 		);
 		return;
 	}
