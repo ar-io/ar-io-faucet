@@ -187,11 +187,19 @@ UI and API share an origin, cookies are **same-site** and no CORS grant is neede
 
 - `FRONT_END_URL=https://faucet.services.ar-io.dev` — the faucet itself; this is where the OAuth callback redirects after auth
 - `GITHUB_OAUTH_CALLBACK_URL=https://faucet.services.ar-io.dev/api/auth/github/callback`
-- `COOKIE_SAMESITE=lax` (the default; safe for same-site)
+- `COOKIE_SAMESITE=lax` (the default; safe for same-site — see the OAuth note below)
 - leave `CORS_ALLOWED_ORIGINS` unset (defaults to `FRONT_END_URL`)
 
 Run behind a TLS-terminating reverse proxy that forwards `X-Forwarded-Proto: https`
 and **overwrites** `X-Forwarded-For` (with `TRUST_PROXY=true` + `COOKIE_SECURE=true`).
+
+> **OAuth callback & `Session mismatch for OAuth callback`.** The GitHub callback
+> returns as a **cross-site top-level redirect** from `github.com`, so the browser
+> must send the `faucet_sid` session cookie back on it. `lax` is generally
+> sufficient (top-level navigations receive `lax` cookies). If a user hits this
+> error, it is usually a **stale `faucet_sid`** cookie — retry in a fresh/incognito
+> session. If it persists across browsers/clients, set `COOKIE_SAMESITE=none`
+> (requires `COOKIE_SECURE=true`).
 
 **Optional split-origin mode.** If you instead host the UI on a *different* site
 (e.g. a frontend on Arweave at `faucet.ar.io` with this API at
@@ -202,6 +210,21 @@ and **overwrites** `X-Forwarded-For` (with `TRUST_PROXY=true` + `COOKIE_SECURE=t
 Agents/devs: see
 [`.claude/skills/ario-testnet-faucet/SKILL.md`](.claude/skills/ario-testnet-faucet/SKILL.md)
 for the API + claim flow.
+
+## Notifications (Slack)
+
+Set `SLACK_WEBHOOK_URL` (a Slack [Incoming Webhook](https://api.slack.com/messaging/webhooks))
+to post to a channel on faucet activity. Both messages are **fire-and-forget** (5s
+timeout, errors swallowed) — a missing, misconfigured, or unreachable webhook never
+blocks or fails a claim. Notifications are disabled when `SLACK_WEBHOOK_URL` is unset.
+
+- **On each successful claim:** the GitHub login, amount, recipient, and a Solana
+  explorer link.
+- **Low balance (optional):** set `SLACK_LOW_BALANCE_THRESHOLD` (in SPL **base
+  units**) to also warn when the faucet's remaining balance drops below it after a
+  claim — e.g. `50000000000` = 50,000 ARIO at 6 decimals.
+
+Treat the webhook URL as a **secret** (anyone with it can post to the channel).
 
 ## Environment Variables
 
@@ -227,3 +250,5 @@ The service supports the following environment variables:
 - `PORT`: The port for the service to run on
 - `LOG_LEVEL`: The log level for the service.
 - `LOG_FORMAT`: The log format for the service.
+- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook for claim + low-balance alerts. Unset disables notifications. Treat as a secret.
+- `SLACK_LOW_BALANCE_THRESHOLD`: Low-balance alert threshold in SPL base units; when set, warns after a claim if the faucet's remaining balance drops below it. Requires `SLACK_WEBHOOK_URL`.
