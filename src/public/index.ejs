@@ -308,9 +308,10 @@
             <div>
                 <label for="qty">Amount (ARIO)</label>
                 <input type="number" id="qty" name="qty" required step="any"
-                    min="<%= (locals.minQty ?? 10000000) / Math.pow(10, locals.decimals ?? 6) %>"
+                    min="<%= (locals.minQty ?? 5000000000) / Math.pow(10, locals.decimals ?? 6) %>"
                     max="<%= (locals.maxQty ?? 10000000000) / Math.pow(10, locals.decimals ?? 6) %>"
-                    value="<%= (locals.defaultQty ?? 10000000000) / Math.pow(10, locals.decimals ?? 6) %>">
+                    value="<%= (locals.defaultQty ?? 5000000000) / Math.pow(10, locals.decimals ?? 6) %>">
+                <p class="field-hint">Enter between <%= ((locals.minQty ?? 5000000000) / Math.pow(10, locals.decimals ?? 6)).toLocaleString('en-US') %> and <%= ((locals.maxQty ?? 10000000000) / Math.pow(10, locals.decimals ?? 6)).toLocaleString('en-US') %> ARIO &mdash; enough to register an ArNS name.</p>
             </div>
 
             <% if (captchaSiteKey) { %>
@@ -407,7 +408,7 @@
         // (integer, scaled by the token's decimals). Values come from the backend
         // with safe fallbacks for the static/permaweb build (ARIO devnet = 6 dp).
         const TOKEN_DECIMALS = <%= locals.decimals ?? 6 %>;
-        const MIN_QTY = <%= locals.minQty ?? 10000000 %>;
+        const MIN_QTY = <%= locals.minQty ?? 5000000000 %>;
         const MAX_QTY = <%= locals.maxQty ?? 10000000000 %>;
         const QTY_FACTOR = Math.pow(10, TOKEN_DECIMALS);
 
