@@ -21,6 +21,7 @@ import Router from 'koa-router';
 import { performClaim } from './claim.js';
 import * as config from './config.js';
 import { BadRequestError } from './errors.js';
+import defaultLogger from './logger.js';
 import {
 	captcha,
 	githubClaimStore,
@@ -234,6 +235,11 @@ router.get('/api/auth/github/callback', async (ctx) => {
 	// additionally burns the per-JWT nonce. Roll back only if token issuance
 	// below fails.
 	if (!githubClaimStore.reserve(user.id)) {
+		reqLog(ctx).warn('Auth denied.', {
+			reason: 'github-already-claimed',
+			githubId: user.id,
+			githubLogin: user.login,
+		});
 		ctx.status = 429;
 		ctx.body = {
 			error: 'Already claimed for this GitHub account this window',
@@ -285,8 +291,7 @@ router.post('/api/claim/async', async (ctx) => {
 	// Authorization header (API clients).
 	const authToken = getClaimToken(ctx);
 	if (!authToken) {
-		ctx.status = 401;
-		ctx.body = { error: 'Unauthorized' };
+		denyClaimAuth(ctx, 'Unauthorized', 'missing-token');
 		return;
 	}
 
@@ -304,14 +309,12 @@ router.post('/api/claim/async', async (ctx) => {
 
 	const { valid, payload } = await verifyAuthTokenSafe(faucet, authToken);
 	if (!valid || !payload) {
-		ctx.status = 401;
-		ctx.body = { error: 'Invalid token' };
+		denyClaimAuth(ctx, 'Invalid token', 'invalid-token');
 		return;
 	}
 
 	if (!sessionBindingOk(ctx, payload)) {
-		ctx.status = 401;
-		ctx.body = { error: 'Session mismatch for claim token' };
+		denyClaimAuth(ctx, 'Session mismatch for claim token', 'session-mismatch');
 		return;
 	}
 
@@ -360,19 +363,20 @@ router.post('/api/claim/sync', async (ctx) => {
 		// from the HttpOnly cookie (browser flow) or Authorization header (API).
 		const authToken = getClaimToken(ctx);
 		if (!authToken) {
-			ctx.status = 401;
-			ctx.body = { error: 'Unauthorized' };
+			denyClaimAuth(ctx, 'Unauthorized', 'missing-token');
 			return;
 		}
 		const verified = await verifyAuthTokenSafe(faucet, authToken);
 		if (!verified.valid || !verified.payload) {
-			ctx.status = 401;
-			ctx.body = { error: 'Invalid token' };
+			denyClaimAuth(ctx, 'Invalid token', 'invalid-token');
 			return;
 		}
 		if (!sessionBindingOk(ctx, verified.payload)) {
-			ctx.status = 401;
-			ctx.body = { error: 'Session mismatch for claim token' };
+			denyClaimAuth(
+				ctx,
+				'Session mismatch for claim token',
+				'session-mismatch',
+			);
 			return;
 		}
 		payload = verified.payload;
@@ -388,6 +392,23 @@ router.post('/api/claim/sync', async (ctx) => {
 });
 
 export default router;
+
+// Resolve the request-scoped logger (set by loggerMiddleware, carries trace+ip),
+// falling back to the module logger.
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function reqLog(ctx: any) {
+	return ctx.state?.logger ?? defaultLogger;
+}
+
+// Reject a claim on an auth failure with a 401, logging the specific reason
+// (missing/invalid token, session mismatch) so these denials are visible for
+// abuse monitoring instead of being silent status writes.
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function denyClaimAuth(ctx: any, error: string, reason: string): void {
+	reqLog(ctx).warn('Claim auth denied.', { reason });
+	ctx.status = 401;
+	ctx.body = { error };
+}
 
 // Read the claim JWT: prefer the HttpOnly cookie set by the OAuth callback
 // (browser flow), fall back to the Authorization: Bearer header (API clients).

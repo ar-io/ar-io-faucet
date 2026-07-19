@@ -17,8 +17,17 @@
  */
 import { TransferSendError } from './errors.js';
 import type { SolanaTokenFaucet } from './faucet/solana-token-faucet.js';
+import defaultLogger from './logger.js';
 import { notifyClaim } from './notifications/slack.js';
 import type { TokenFaucet, TokenPayload } from './types.js';
+
+// Resolve the request-scoped logger set by loggerMiddleware (carries trace + ip),
+// falling back to the module logger so performClaim stays unit-testable with a
+// bare ctx that has no state.
+// biome-ignore lint/suspicious/noExplicitAny: koa Context typing
+function claimLog(ctx: any) {
+	return ctx?.state?.logger ?? defaultLogger;
+}
 
 // The subset of the per-githubId anti-sybil store performClaim needs. Kept as an
 // interface (rather than importing the concrete store from system.ts) so this
@@ -62,6 +71,11 @@ export async function performClaim(
 	// 1. per-githubId anti-sybil re-check. The slot was reserved at the OAuth
 	// callback; if it's gone the window rolled over — reject rather than transfer.
 	if (githubId !== undefined && !githubClaimStore.has(githubId)) {
+		claimLog(ctx).warn('Claim denied.', {
+			reason: 'github-slot-expired',
+			githubId,
+			recipient,
+		});
 		ctx.status = 429;
 		ctx.body = {
 			error: 'Already claimed for this GitHub account this window',
@@ -73,6 +87,11 @@ export async function performClaim(
 	// transfer. If the nonce was already reserved/consumed, this is a replay —
 	// reject before any tokens move.
 	if (payload && !solanaFaucet.reserveNonce(payload)) {
+		claimLog(ctx).warn('Claim denied.', {
+			reason: 'nonce-replay',
+			githubId,
+			recipient,
+		});
 		ctx.status = 409;
 		ctx.body = { error: 'Token already used' };
 		return;
@@ -87,6 +106,19 @@ export async function performClaim(
 			githubId,
 		});
 		ctx.body = { id, status };
+
+		// audit trail: one queryable info line per disbursement (recipient,
+		// amount, tx signature, github identity) so claims are answerable from
+		// logs, not only the opt-in Slack webhook.
+		claimLog(ctx).info('Claim succeeded.', {
+			txId: id,
+			status,
+			recipient,
+			amount: qty,
+			tokenId: solanaFaucet.tokenName,
+			githubId,
+			githubLogin: payload?.githubLogin,
+		});
 
 		// fire-and-forget Slack notification (opt-in via SLACK_WEBHOOK_URL)
 		notifyClaim({
@@ -103,6 +135,12 @@ export async function performClaim(
 		// nonce (that would re-arm the JWT and enable a replay/double-claim).
 		// Surface a distinct pending/unknown status instead of a hard failure.
 		if (error instanceof TransferSendError) {
+			claimLog(ctx).warn('Claim pending (post-broadcast confirm timeout).', {
+				reason: 'confirm-timeout',
+				recipient,
+				githubId,
+				error: error.message,
+			});
 			ctx.status = 202;
 			ctx.body = {
 				status: 'pending',
