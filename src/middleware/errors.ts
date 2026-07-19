@@ -25,15 +25,19 @@ export async function errorMiddleware(ctx: Context, next: Next) {
 	try {
 		await next();
 	} catch (error) {
-		logger.error('Error processing request.', {
-			error: error instanceof Error ? error.message : error,
-			stack: error instanceof Error ? error.stack : undefined,
-		});
+		const message = error instanceof Error ? error.message : error;
 		if (error instanceof BadRequestError) {
+			// client error: expected, high-volume, not actionable — log at warn
+			// without a stack so real (5xx) failures stay easy to alert on.
 			ctx.status = 400;
+			logger.warn('Bad request.', { error: message });
 		} else {
 			ctx.status = 503;
+			logger.error('Error processing request.', {
+				error: message,
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 		}
-		ctx.body = { error: error instanceof Error ? error.message : error };
+		ctx.body = { error: message };
 	}
 }

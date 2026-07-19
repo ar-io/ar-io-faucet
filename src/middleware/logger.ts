@@ -26,13 +26,22 @@ export async function loggerMiddleware(ctx: Context, next: Next) {
 		path: ctx.path,
 		method: ctx.method,
 		params: ctx.params,
+		// client ip (Koa-parsed from X-Forwarded-For when TRUST_PROXY is on) so
+		// every downstream log line — claims, denials, errors — is attributable.
+		ip: ctx.ip,
 	});
 	ctx.state.logger = log;
 	ctx.state.trace = trace;
 	const startTime = Date.now();
 	await next();
 	const duration = Date.now() - startTime;
-	log.debug('Completed request.', {
-		responseTime: `${duration}ms`,
-	});
+	// Access log at info so normal traffic is visible in production (LOG_LEVEL
+	// defaults to info, at which the previous debug line was silent). Skip the
+	// health-check to avoid flooding the logs with uptime-probe noise.
+	if (ctx.path !== '/healthcheck') {
+		log.info('Completed request.', {
+			status: ctx.status,
+			responseTime: `${duration}ms`,
+		});
+	}
 }
